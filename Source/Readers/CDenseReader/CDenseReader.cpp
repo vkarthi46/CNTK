@@ -420,12 +420,12 @@ namespace Microsoft {
 				bool writeCache = firstEpoch && enableCache;
 				std::thread readZipData([this](bool writeCache)
 				{
-					size_t writedBlockNum = this->ReadZipData(m_readOrder,
+					size_t blocksNum = this->ReadZipData(m_readOrder,
 						m_readOrderLength, this->m_maxCacheSize,
 						this->m_cachedBlockNum, writeCache);
 
 					if (writeCache) {
-						this->m_cachedBlockNum = writedBlockNum;
+						this->m_cachedBlockNum = blocksNum;
 					}
 
 				}, writeCache);
@@ -574,15 +574,15 @@ namespace Microsoft {
 
 
 			template<class ElemType>
-			void DenseBinaryInput<ElemType>::ReadCachedZipData(size_t* read_order, size_t numToTread) {
+			void DenseBinaryInput<ElemType>::ReadCachedZipData(size_t* read_order, size_t num2Read) {
 
-				size_t limit = (this->m_zipedDataToConsume.size() + this->m_zipedDataToProduce.size()) / 2;
+				//size_t limit = (this->m_zipedDataToConsume.size() + this->m_zipedDataToProduce.size()) / 2;
 
 				//move to the beg
 				this->m_cacheFile.seekg(0, ios::beg);
 
-				for (int i = 0; i < numToTread; ++i) {
-					void* zipDataBuffer = this->m_zipedDataToProduce.pop(limit);
+				for (int i = 0; i < num2Read; ++i) {
+					void* zipDataBuffer = this->m_zipedDataToProduce.pop();
 
 					size_t readSize = m_blockSizeInByte[read_order[i]];
 					this->m_cacheFile.read((char*)zipDataBuffer, readSize);
