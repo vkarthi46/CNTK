@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #else
 #include <direct.h>
 #endif
@@ -581,6 +582,10 @@ namespace Microsoft {
 				}
 			}
 
+            float timediff_msec(struct timeval t0, struct timeval t1)
+            {
+                return (t1.tv_sec - t0.tv_sec) * 1000.0f + (t1.tv_usec - t0.tv_usec) / 1000.0f;
+            }
 
 			template<class ElemType>
 			void DenseBinaryInput<ElemType>::ReadCachedZipData(size_t* read_order, size_t num2Read) {
@@ -589,16 +594,26 @@ namespace Microsoft {
 
 				//move to the beg
 				this->m_cacheFile.seekg(0, ios::beg);
+                struct timeval t1, t2, t3;
 
 				for (int i = 0; i < num2Read; ++i) {
-					fprintf(stderr, "Local 1 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
+
+                    gettimeofday(&t1, NULL);
+                	fprintf(stderr, "Local1 %d\t%ld\t%ld\t%ld\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size());
+
 					void* zipDataBuffer = this->m_zipedDataToProduce.pop();
-					fprintf(stderr, "Local 2 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
+
+                    gettimeofday(&t2, NULL);
+                    size_t elapsed = timediff_msec(t1, t2);
+					fprintf(stderr, "Local2 %d\t%ld\t%ld\t%ld\t%ld\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), elapsed);
+
 					size_t readSize = m_blockSizeInByte[read_order[i]];
 					this->m_cacheFile.read((char*)zipDataBuffer, readSize);
-
 					m_zipedDataToConsume.push(zipDataBuffer);
-					fprintf(stderr, "Local 3 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
+
+                    gettimeofday(&t3, NULL);
+                    elapsed = timediff_msec(t2, t3);
+					fprintf(stderr, "Local3 %d\t%ld\t%ld\t%ld\t%ld\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), elapsed);
 					m_blockCntLocker.lock();
 					m_blockCntBeenRead += 1;
 					m_blockCntLocker.unlock();
@@ -610,17 +625,22 @@ namespace Microsoft {
 				size_t numToRead, size_t maxCacheSize, size_t skipBlockNum, bool writeToCache)
 			{
 				size_t cachedNum = 0;
-
+				struct timeval t1, t2, t3;
 				for (int i = skipBlockNum; i < numToRead; i++) {
-					fprintf(stderr, "Net 1 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
+					gettimeofday(&t1, NULL);
+					fprintf(stderr, "Net1 %d\t%ld\t%ld\t%ld\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size());
 					void * zipDataBuffer = this->m_zipedDataToProduce.pop();
-					fprintf(stderr, "Net 2 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
+					gettimeofday(&t2, NULL);
+                    size_t elapsed = timediff_msec(t1, t2);
+					fprintf(stderr, "Net2 %d\t%ld\t%ld\t%ld\t%ld\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), elapsed);
 					size_t readSize = m_blockSizeInByte[read_order[i]];
 					this->m_inFile.seekg(m_blockOffset[read_order[i]], ios::beg);
 
 					this->m_inFile.read((char*)zipDataBuffer, readSize);
 					m_zipedDataToConsume.push(zipDataBuffer);
-					fprintf(stderr, "Net 3 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
+					gettimeofday(&t3, NULL);
+                    elapsed = timediff_msec(t2, t3);
+					fprintf(stderr, "Net3 %d\t%ld\t%ld\t%ld\t%ld\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), elapsed);
 					this->m_blockCntLocker.lock();
 					m_blockCntBeenRead += 1;
 					this->m_blockCntLocker.unlock();
