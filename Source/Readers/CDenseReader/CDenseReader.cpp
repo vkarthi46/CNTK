@@ -595,7 +595,7 @@ namespace Microsoft {
 				//move to the beg
 				this->m_cacheFile.seekg(0, ios::beg);
                 struct timeval t1, t2, t3;
-
+				fprintf(stderr, "Local0 %s\n", GetNow());
 				for (int i = 0; i < num2Read; ++i) {
 
                     gettimeofday(&t1, NULL);
@@ -618,6 +618,7 @@ namespace Microsoft {
 					m_blockCntBeenRead += 1;
 					m_blockCntLocker.unlock();
 				}
+				fprintf(stderr, "Local4 %s\n", GetNow());
 			}
 
 			template<class ElemType>
@@ -626,6 +627,7 @@ namespace Microsoft {
 			{
 				size_t cachedNum = 0;
 				struct timeval t1, t2, t3;
+				fprintf(stderr, "Net0 %s\n", GetNow());
 				for (int i = skipBlockNum; i < numToRead; i++) {
 					gettimeofday(&t1, NULL);
 					fprintf(stderr, "Net1 %d\t%ld\t%ld\t%ld\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size());
@@ -657,7 +659,7 @@ namespace Microsoft {
 						writeToCache = false;
 					}
 				}
-
+				fprintf(stderr, "Net4 %s\n", GetNow());
 				return cachedNum;
 			}
 
