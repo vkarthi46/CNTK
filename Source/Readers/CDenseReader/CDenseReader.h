@@ -133,6 +133,7 @@ namespace Microsoft {
 				void CompactUnzipBuffer();
 				void UnzipData(int threadIndex, size_t numToRead);
 				void Print(void * buffer, int start, int end);
+				char * GetNow();
 				void ClearUnzipBufferStatus();
 				int GetMinimumEpochSizeCrossAllWorker(size_t mbSize, size_t subsetNum, size_t numSubsets);
 				int32_t Copy2Buffer(void *bufferInProduce, size_t numToRead);
@@ -187,6 +188,7 @@ namespace Microsoft {
 				std::vector<size_t> m_sampleCntInBlock;
 				std::vector<size_t> m_blockOffset;
 				size_t m_numBlocks;
+				size_t m_numBlocksLocal;
 				int32_t m_blockSampleCnt;
 				int32_t m_blockSize;
 				int32_t m_blockSizeOfUnzippedBuffer;

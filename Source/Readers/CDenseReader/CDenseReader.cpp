@@ -111,7 +111,7 @@ namespace Microsoft {
 			template<class ElemType>
 			DenseBinaryInput<ElemType>::DenseBinaryInput(std::wstring fileName) : m_fileName(fileName), m_readOrder(nullptr), m_readOrderLength(0), m_randomize(false),
 				m_startBlock(0), m_unzippedBuffer(nullptr), m_zippedFileBlockBuffer(nullptr), m_unzippedBufferLen(0), m_sampleCntInUnzippedBuffer(0), m_lastValidPosOfUnzippedBuffer(-1), m_firstValidPosOfUnzippedBuffer(0), m_blockCntBeenRead(0),
-				m_blockCntBeenCopied(0), m_dThreadCnt(0), m_batchCntBeenCopied(0), m_processedBlockCnt(0){
+				m_blockCntBeenCopied(0), m_dThreadCnt(0), m_batchCntBeenCopied(0), m_processedBlockCnt(0), m_numBlocksLocal(0), m_numBlocks(0){
 				std::string name = msra::strfun::utf8(m_fileName);
 				m_inFile.open(name, ifstream::binary | ifstream::in);
 			}
@@ -476,6 +476,15 @@ namespace Microsoft {
 			}
 
 			template<class ElemType>
+			char * DenseBinaryInput<ElemType>::GetNow(){
+				time_t now;
+				struct tm * strNow;
+				time(&now);
+				strNow = localtime(&now);
+				return asctime(strNow);
+			}
+
+			template<class ElemType>
 			void DenseBinaryInput<ElemType>::ClearUnzipBufferStatus(){
 				m_blockCntBeenRead = 0;
 				m_sampleCntInUnzippedBuffer = 0;
@@ -582,13 +591,14 @@ namespace Microsoft {
 				this->m_cacheFile.seekg(0, ios::beg);
 
 				for (int i = 0; i < num2Read; ++i) {
+					fprintf(stderr, "Local 1 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
 					void* zipDataBuffer = this->m_zipedDataToProduce.pop();
-
+					fprintf(stderr, "Local 2 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
 					size_t readSize = m_blockSizeInByte[read_order[i]];
 					this->m_cacheFile.read((char*)zipDataBuffer, readSize);
 
 					m_zipedDataToConsume.push(zipDataBuffer);
-
+					fprintf(stderr, "Local 3 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocksLocal, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
 					m_blockCntLocker.lock();
 					m_blockCntBeenRead += 1;
 					m_blockCntLocker.unlock();
@@ -602,14 +612,15 @@ namespace Microsoft {
 				size_t cachedNum = 0;
 
 				for (int i = skipBlockNum; i < numToRead; i++) {
+					fprintf(stderr, "Net 1 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
 					void * zipDataBuffer = this->m_zipedDataToProduce.pop();
-
+					fprintf(stderr, "Net 2 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
 					size_t readSize = m_blockSizeInByte[read_order[i]];
 					this->m_inFile.seekg(m_blockOffset[read_order[i]], ios::beg);
 
 					this->m_inFile.read((char*)zipDataBuffer, readSize);
 					m_zipedDataToConsume.push(zipDataBuffer);
-
+					fprintf(stderr, "Net 3 %d\t%ld\t%ld\t%ld%s\n", i, m_numBlocks, m_zipedDataToConsume.size(), m_zipedDataToProduce.size(), GetNow());
 					this->m_blockCntLocker.lock();
 					m_blockCntBeenRead += 1;
 					this->m_blockCntLocker.unlock();
@@ -619,6 +630,7 @@ namespace Microsoft {
 						this->m_cacheFile.write((char*)zipDataBuffer, readSize);
 						cachedNum += 1;
 						maxCacheSize -= readSize;
+						m_numBlocksLocal++;
 					}
 					else {
 						//stop caching
