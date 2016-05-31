@@ -78,7 +78,12 @@ SequenceDataPtr ImageTransformerBase::Transform(SequenceDataPtr sequence)
     {
         result->m_original = sequence;
     }
-    assert(buffer.isContinuous());
+
+    if(!buffer.isContinuous())
+    {
+        RuntimeError("Unexpected uncontiguous image with id %d", (int)sequence->m_id);
+    }
+
     result->m_image = buffer;
     result->m_data = buffer.ptr();
     result->m_numberOfSamples = inputSequence.m_numberOfSamples;
