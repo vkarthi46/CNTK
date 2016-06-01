@@ -1889,7 +1889,7 @@ template <class ElemType>
     {
         // multiply by actualMBSize so that it's invariant to minibatch size since learning rate is per sample
         Matrix<ElemType>::ScaleAndAdd((ElemType)(L2RegWeight * actualMBSize), functionValues, gradientValues); 
-		LOGPRINTF(stderr, "actualMBSize : %d, L2RegWeight : %d", actualMBSize, L2RegWeight);
+		fprintf(stderr, "actualMBSize : %d, L2RegWeight : %0.8d", (int)actualMBSize, L2RegWeight);
     }
 
     if (adpType == GradientsUpdateType::None)
@@ -1928,7 +1928,7 @@ template <class ElemType>
     {
         // multiply by actualMBSize so that it's invariant to minibatch size since learning rate is per sample
         functionValues.InplaceSoftThreshold((ElemType)(learnRatePerSample * L1RegWeight * actualMBSize));
-		LOGPRINTF(stderr, "L1RegWeight : %d", L1RegWeight);
+		LOGPRINTF(stderr, "L1RegWeight : %0.8d", L1RegWeight);
     }
 
 #if DUMPOUTPUT
