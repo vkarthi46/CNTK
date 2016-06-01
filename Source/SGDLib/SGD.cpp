@@ -1063,6 +1063,7 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
                                   GetMomentumPerSample(epochNumber /*BUGBUG workaround:*/, net->GetMBLayoutPtrOfNetwork()->GetNumParallelSequences()), numSamplesInMinibatch,
                                   m_L2RegWeight, m_L1RegWeight,
                                   m_needAveMultiplier, m_useNesterovMomentum);
+					
 #ifdef _DEBUG
                     if (dynamic_pointer_cast<ComputationNode<ElemType>>(node)->Value().HasNan("TrainOneEpoch/UpdateWeights(): "))
                         LogicError("%ls %ls operation has NaNs in functionValues after parameter update.", node->NodeName().c_str(), node->OperationName().c_str());
@@ -1887,7 +1888,8 @@ template <class ElemType>
     if (L2RegWeight > 0)
     {
         // multiply by actualMBSize so that it's invariant to minibatch size since learning rate is per sample
-        Matrix<ElemType>::ScaleAndAdd((ElemType)(L2RegWeight * actualMBSize), functionValues, gradientValues);
+        Matrix<ElemType>::ScaleAndAdd((ElemType)(L2RegWeight * actualMBSize), functionValues, gradientValues); 
+		LOGPRINTF(stderr, "actualMBSize : %d, L2RegWeight : %d", actualMBSize, L2RegWeight);
     }
 
     if (adpType == GradientsUpdateType::None)
@@ -1926,6 +1928,7 @@ template <class ElemType>
     {
         // multiply by actualMBSize so that it's invariant to minibatch size since learning rate is per sample
         functionValues.InplaceSoftThreshold((ElemType)(learnRatePerSample * L1RegWeight * actualMBSize));
+		LOGPRINTF(stderr, "L1RegWeight : %d", L1RegWeight);
     }
 
 #if DUMPOUTPUT
