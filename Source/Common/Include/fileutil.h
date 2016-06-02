@@ -700,7 +700,9 @@ class auto_file_ptr
         {
             int rc = ::fclose(f);
             if ((rc != 0) && !std::uncaught_exception())
-                RuntimeError("auto_file_ptr: failed to close file %d", rc);
+            {
+                RuntimeError("auto_file_ptr: failed to close file %d, %s", rc, strerror(errno));
+            }
 
             f = NULL;
         }
