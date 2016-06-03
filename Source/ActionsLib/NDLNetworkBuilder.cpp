@@ -133,11 +133,16 @@ void NDLNodeEvaluatorImpl<ElemType>::Evaluate(NDLNode<ElemType>* node, const wst
                                      && node->GetOptionalParameter("needsGradient", "true")
                                      && node->GetOptionalParameter("computeGradient", "true");
             float learningRateMultiplier = node->GetOptionalParameter("learningRateMultiplier", "1");
-            if (!gradientUpdateNeeded)  // if user has specified needsGradient flag to false
-                learningRateMultiplier = 0.0;
+			float weightDecayMultiplier = node->GetOptionalParameter("weightDecayMultiplier", "1");
+			if (!gradientUpdateNeeded)  // if user has specified needsGradient flag to false
+			{
+				learningRateMultiplier = 0.0;
+				weightDecayMultiplier = 0.0;
+			}
 
             nodePtr = builder.CreateLearnableParameter(name, tensorShape);
             nodePtr->SetLearningRateMultiplier(learningRateMultiplier);
+			nodePtr->SetWeightDecayMultiplier(weightDecayMultiplier);
         }
         else if (pass == ndlPassFinal)
         {

@@ -41,6 +41,9 @@ LearnableParameter<ElemType>::LearnableParameter(const ScriptableObjects::IConfi
     else if (configp->Exists(L"needsGradient") || configp->Exists(L"needGradient") || configp->Exists(L"computeGradient"))
         InvalidArgument("Deprecated parameter names needsGradient|needGradient|computeGradient are not supported in BrainScript. Use learningRateMultiplier instead.");
 
+	if (configp->Exists(L"weightDecayMultiplier"))
+		SetLearningRateMultiplier(configp->Get(L"weightDecayMultiplier"));
+
     wstring initString = configp->Get(L"init");
     if (initString == L"fixedValue")
         Value().SetValue((ElemType) configp->Get(L"value"));
@@ -167,6 +170,7 @@ void LearnableParameter<ElemType>::Save(File& fstream) const /*override*/
 {
     Base::Save(fstream);
     fstream << m_learningRateMultiplier;
+	fstream << m_weightDecayMultiplier;
     m_sampleLayout.Save(fstream);
     fstream << Value();
 }
@@ -181,6 +185,7 @@ void LearnableParameter<ElemType>::Load(File& fstream, size_t modelVersion) /*ov
     if (modelVersion >= CNTK_MODEL_VERSION_3)
     {
         fstream >> m_learningRateMultiplier;
+		fstream >> m_weightDecayMultiplier;
         sampleLayout.Load(fstream);
     }
     else // legacy format(s)
@@ -188,6 +193,8 @@ void LearnableParameter<ElemType>::Load(File& fstream, size_t modelVersion) /*ov
         bool parameterUpdateRequired;
         fstream >> parameterUpdateRequired;
         SetLearningRateMultiplier((float)parameterUpdateRequired);
+		fstream >> parameterUpdateRequired;
+		SetWeightDecayMultiplier((float)parameterUpdateRequired);
 
         size_t rows, cols;
         fstream >> rows >> cols;

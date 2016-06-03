@@ -1889,7 +1889,6 @@ template <class ElemType>
     {
         // multiply by actualMBSize so that it's invariant to minibatch size since learning rate is per sample
         Matrix<ElemType>::ScaleAndAdd((ElemType)(L2RegWeight * actualMBSize), functionValues, gradientValues); 
-		fprintf(stderr, "actualMBSize : %d, L2RegWeight : %0.8g", (int)actualMBSize, L2RegWeight);
     }
 
     if (adpType == GradientsUpdateType::None)
@@ -1928,7 +1927,6 @@ template <class ElemType>
     {
         // multiply by actualMBSize so that it's invariant to minibatch size since learning rate is per sample
         functionValues.InplaceSoftThreshold((ElemType)(learnRatePerSample * L1RegWeight * actualMBSize));
-		LOGPRINTF(stderr, "L1RegWeight : %0.8g", L1RegWeight);
     }
 
 #if DUMPOUTPUT
@@ -1956,9 +1954,10 @@ void SGD<ElemType>::UpdateWeights(const ComputationNodeBasePtr& node,
         LogicError("UpdateWeights() called for a learnable ComputationNode which has m_learningRateMultiplier == 0!");
 
     double nodeDependentLearningRatePerSample = learnRatePerSample * node->GetLearningRateMultiplier();
+	double nodeDependentL2WeightDecay = L2RegWeight * node->GetWeightDecayMultiplier();
     UpdateWeightsS(this, dynamic_pointer_cast<ComputationNode<ElemType>>(node)->Value(), dynamic_pointer_cast<ComputationNode<ElemType>>(node)->Gradient(),
                    smoothedGradient, nodeDependentLearningRatePerSample, momentumPerSample,
-                   actualMBSize, L2RegWeight, L1RegWeight,
+                   actualMBSize, nodeDependentL2WeightDecay, L1RegWeight,
                    needAveMultiplier, m_useNesterovMomentum);
     node->BumpEvalTimeStamp();
 }

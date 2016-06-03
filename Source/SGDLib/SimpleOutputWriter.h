@@ -183,6 +183,7 @@ public:
                 auto parent = dynamic_pointer_cast<ComputationNode<ElemType>>(inputNode);
                 auto newNode = builder.Pass(parent, inputNode->NodeName() + L".grad");
                 newNode->SetLearningRateMultiplier(1.0); // Forces gradient update. Otherwise, backprop might get pruned from this path.
+				newNode->SetWeightDecayMultiplier(1.0);
                 InsertNode(allNodes, parent, newNode);
                 gradientNodes.push_back(dynamic_pointer_cast<ComputationNode<ElemType>>(newNode));
                 allOutputNodes.push_back(newNode);

@@ -33,12 +33,14 @@ public:
         : Base(deviceId, name)
     {
         SetLearningRateMultiplier(1.0f); // enable normal learning by default
+		SetWeightDecayMultiplier(1.0f);
         MarkValueNonSharable();
     }
     LearnableParameter(DEVICEID_TYPE deviceId, const wstring& name, const TensorShape& shape)
         : Base(deviceId, name)
     {
         SetLearningRateMultiplier(1.0f);
+		SetWeightDecayMultiplier(1.0f);
         MarkValueNonSharable();
         InitShape(shape);
     }
@@ -172,6 +174,7 @@ class InputValueBase : public ComputationNode<ElemType>, public NumInputs<0>, pu
         SetDims(sampleLayout, HasMBLayout()); // also called when reloading a file. Then we have an MBLayout, otherwise not yet
         UpdateFunctionValuesSize();           // we must allocate the matrix so that the readers get objects with valid row dimensions (some readers expect that)
         SetLearningRateMultiplier(0);
+		SetWeightDecayMultiplier(0);
         m_dynamicAxisNodeName = axisName;
     }
 

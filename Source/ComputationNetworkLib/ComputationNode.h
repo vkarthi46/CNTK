@@ -285,7 +285,8 @@ public:
 
     ComputationNodeBase(DEVICEID_TYPE deviceId, const wstring& name) :
         m_deviceId(deviceId), m_outputNeededDuringBackprop(true), m_learningRateMultiplier(0),
-        m_gradientInitialized(false), m_nodeName(name == L"" ? CreateUniqNodeName() : name)
+        m_gradientInitialized(false), m_nodeName(name == L"" ? CreateUniqNodeName() : name), 
+		m_weightDecayMultiplier(1)
     {
         // TODO: should m_learningRateMultiplier be set to 0? Or should every node have a way to add its own say on the learning rate for all its inputs?
     }
@@ -305,6 +306,7 @@ public:
         {
             node->m_deviceId = m_deviceId;
             node->m_learningRateMultiplier = m_learningRateMultiplier;
+			node->m_weightDecayMultiplier = m_weightDecayMultiplier;
             node->m_nodeName = newName;
 
             node->m_sampleLayout = m_sampleLayout;
@@ -610,7 +612,14 @@ public:
             InvalidArgument("%ls: LearningRateMultiplier should be non-negative. You are tring to set it to %f.", NodeDescription().c_str(), f);
         m_learningRateMultiplier = f; 
     }
+	void SetWeightDecayMultiplier(double f)
+	{
+		if (f < 0)
+			InvalidArgument("%ls: WeightDecayMultiplier should be non-nagetive. You are tring to set it to %f.", NodeDescription().c_str(), f);
+		m_weightDecayMultiplier = f;
+	}
     float GetLearningRateMultiplier() const { return m_learningRateMultiplier; }
+	double GetWeightDecayMultiplier() const { return m_weightDecayMultiplier; }
     bool IsParameterUpdateRequired() const { return m_learningRateMultiplier > 0; }
 
     // return true if the node's value should be computed before the normal training. e.g., mean and invStd of input features.
@@ -862,6 +871,8 @@ protected:
     float m_learningRateMultiplier;    // update parameters? Only used for LearnableParameters.    --TODO: Should we make this a member of LearnableParameters actually? And require a type cast? Currently it is read out for all leaves.
     bool m_gradientInitialized;        // indicates whether the gradient matrix has been resized and initialized to 0
     bool m_outputNeededDuringBackprop; // indicates whether the output value of the node is needed during backprop
+
+	double m_weightDecayMultiplier;
 };
 typedef ComputationNodeBase::ComputationNodeBasePtr ComputationNodeBasePtr;
 
@@ -1997,6 +2008,7 @@ protected:                                                                      
     using Base::m_nodeName;                                                                                                                              \
     using Base::m_pMBLayout;                                                                                                                             \
     using Base::m_learningRateMultiplier;                                                                                                                \
+	using Base::m_weightDecayMultiplier;																												 \
     using Base::m_sampleLayout;                                                                                                                          \
     using Base::m_value;                                                                                                                                 \
     using Base::m_valueSharable;                                                                                                                         \

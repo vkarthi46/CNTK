@@ -18,8 +18,8 @@ ConvLocalReLULayer(inp, outMap, outWCount, inMap, inWCount, kW, kH, hStride, vSt
 
 ConvBNLayerW(W, inp, outMap, kW, kH, hStride, vStride, bValue, scValue, bnTimeConst)
 [
-    b = LearnableParameter(outMap, 1, init = fixedValue, value = bValue)
-    sc = LearnableParameter(outMap, 1, init = fixedValue, value = scValue)
+    b = LearnableParameter(outMap, 1, init = fixedValue, value = bValue, weightDecayMultiplier = 0)
+    sc = LearnableParameter(outMap, 1, init = fixedValue, value = scValue, weightDecayMultiplier = 0)
     m = LearnableParameter(outMap, 1, init = fixedValue, value = 0, learningRateMultiplier = 0)
     isd = LearnableParameter(outMap, 1, init = fixedValue, value = 0, learningRateMultiplier = 0)
     

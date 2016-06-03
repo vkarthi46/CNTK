@@ -191,3 +191,4 @@ Source/CNTK/buildinfo.h$$
 Tests/UnitTests/ReaderTests/Control/**/*_Output.txt
 Tests/UnitTests/NetworkTests/Output/
 *.opendb
+CNTK.VC.db
