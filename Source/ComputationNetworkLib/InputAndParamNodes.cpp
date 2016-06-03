@@ -42,7 +42,7 @@ LearnableParameter<ElemType>::LearnableParameter(const ScriptableObjects::IConfi
         InvalidArgument("Deprecated parameter names needsGradient|needGradient|computeGradient are not supported in BrainScript. Use learningRateMultiplier instead.");
 
 	if (configp->Exists(L"weightDecayMultiplier"))
-		SetLearningRateMultiplier(configp->Get(L"weightDecayMultiplier"));
+		SetWeightDecayMultiplier(configp->Get(L"weightDecayMultiplier"));
 
     wstring initString = configp->Get(L"init");
     if (initString == L"fixedValue")

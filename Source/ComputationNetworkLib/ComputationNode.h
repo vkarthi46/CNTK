@@ -1972,7 +1972,7 @@ protected:                                                                      
     using Base::NodeDescription;                                                                                                                         \
     using Base::OutputUsedInComputingInputNodesGradients;                                                                                                \
     using Base::PrintNodeValuesToFile;                                                                                                                   \
-    using Base::FormatOperationPrototype;                                                                                                               \
+    using Base::FormatOperationPrototype;                                                                                                                \
     using Base::ReleaseMatricesAfterBackprop;                                                                                                            \
     using Base::ReleaseMatricesAfterForwardProp;                                                                                                         \
     using Base::ReleaseMatrixToPool;                                                                                                                     \
@@ -1984,6 +1984,7 @@ protected:                                                                      
     using Base::SetDims;                                                                                                                                 \
     using Base::SetInput;                                                                                                                                \
     using Base::SetLearningRateMultiplier;                                                                                                               \
+	using Base::SetWeightDecayMultiplier;																												 \
     using Base::UpdateFunctionMBSize;                                                                                                                    \
     using Base::UpdateFunctionValuesSize;                                                                                                                \
     using Base::Validate;                                                                                                                                \
