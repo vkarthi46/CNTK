@@ -100,8 +100,9 @@ void LearnableParameter<ElemType>::InitRandom(const bool uniformInit,
     }
     else
     {
-        size_t inputSize = value.GetNumCols();
-        ElemType randInitstd = 0.2f * initValueScale / sqrt(ElemType(inputSize));
+        //size_t inputSize = value.GetNumCols();
+        //ElemType randInitstd = 0.2f * initValueScale / sqrt(ElemType(inputSize));
+		ElemType randInitstd = 0.01f;
         value.SetGaussianRandomValue(0, randInitstd, randomSeed);
     }
     if (initOnCPUOnly)
