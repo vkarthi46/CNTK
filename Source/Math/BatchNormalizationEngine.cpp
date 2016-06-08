@@ -109,6 +109,7 @@ std::unique_ptr<BatchNormEngine<ElemType>> BatchNormEngine<ElemType>::Create(DEV
                                                                              bool spatial, ImageLayoutKind imageLayout,
                                                                              BatchNormEngineKind enabledEngines)
 {
+	enabledEngines = BatchNormEngineKind::CuDnn;
     // Use CNTK as default batch norm engine.
     if (HasFlag(enabledEngines, BatchNormEngineKind::Cntk))
     {

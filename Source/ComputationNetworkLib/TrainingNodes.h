@@ -1583,7 +1583,7 @@ class BatchNormalizationNode : public ComputationNode<ElemType>, public NumInput
 
 public:
     BatchNormalizationNode(DEVICEID_TYPE deviceId, const wstring& name)
-        : Base(deviceId, name), m_spatial(false), m_normTimeConst(0), m_blendTimeConst(0), m_epsilon(0), m_useCntkEngine(true),
+        : Base(deviceId, name), m_spatial(false), m_normTimeConst(0), m_blendTimeConst(0), m_epsilon(0), m_useCntkEngine(false),
         m_mbCount(0), m_imageLayoutKind(ImageLayoutKind::CHW)
     {
     }
