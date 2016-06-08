@@ -412,6 +412,36 @@ protected:
     bool m_convolution2D;
 };
 
+
+// -----------------------------------------------------------------------
+// ROIPoolingNode (inputFeature, inputROIs)
+// -----------------------------------------------------------------------
+
+template <class ElemType>
+class ROIPoolingNode : public ConvolutionNodeBase<ElemType>, public NumInputs<2>
+
+{
+
+  typedef ConvolutionNodeBase<ElemType> Base;
+  UsingConvolutionNodeBaseMembers;
+
+  static const std::wstring TypeName() 
+  {
+    return L"ROIPooling";
+  }
+public:
+	ROIPoolingNode(DEVICEID_TYPE deviceId, const wstring& name)
+		: Base(deviceId, name)
+	{
+	}
+
+	ROIPoolingNode(const ScriptableObjects::IConfigRecordPtr configp)
+		: ROIPoolingNode(configp->Get(L"deviceId"), L"<placeholder>")
+	{
+		AttachInputsFromConfig(configp, GetExpectedNumInputs());
+	}
+};
+
 // -----------------------------------------------------------------------
 // PoolingNode (inputFeature)
 // -----------------------------------------------------------------------

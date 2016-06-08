@@ -56,6 +56,8 @@ DNN=[
     # DNNImageSigmoidLayer and DNNLayer are defined in Macros.ndl
     h1 = DNNImageSigmoidLayer(7, 7, cMap2, h1Dim, pool2, 1)
     ol = DNNLayer(h1Dim, labelDim, h1, 1)
+
+    roi = ROIPooling(labels, o1, pool2, pool1)
     
     ce = CrossEntropyWithSoftmax(labels, ol)
     err = ErrorPrediction(labels, ol)
