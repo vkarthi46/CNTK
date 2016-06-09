@@ -481,13 +481,25 @@ void NDLNodeEvaluatorImpl<ElemType>::Evaluate(NDLNode<ElemType>* node, const wst
     }
 	else if (cnNodeType == OperationNameOf(ROIPoolingNode))
 	{
+
+		nodeParamCount = 2;
+		nodeParamStart = 0;
+
 		if (pass == ndlPassInitial)
 		{
-			// inputs get attached later??? this function calls AddNodeToNetAndAttachInputs, but that fn
-			// tries to attach the inputs we pass here: NULL and NULL. the other nodes seem to do this too, though.
-			// how do their inputs actually get attached? and why does, for instance, the convolutionnode constructor in ConvolutionalNodes.h
-			// call AttachInputsFromConfig if it's added to the network with AddNodeToNetAndAttachInputs?
-			nodePtr = builder.ROIPooling(NULL, NULL, name);
+
+			int id = 2; // skip inputValueNode and inputROINode
+
+			// evaluate only scalar parameters
+			vector<void*> params = EvaluateParameters(node, baseName, id, parameter.size() - id, pass);
+
+			id = 0; // reset counter because the params array starts at zero
+			size_t H = ((NDLNode<ElemType>*) params[id++])->GetScalar();
+			size_t W = ((NDLNode<ElemType>*) params[id++])->GetScalar();
+
+			ImageLayoutKind imageLayoutKind = ImageLayoutKindFrom(node->GetOptionalParameter("imageLayout", "HWC"));
+
+			nodePtr = builder.ROIPooling(NULL, NULL, H, W, imageLayoutKind, name);
 		}
 	}
     else if (cnNodeType == OperationNameOf(BatchNormalizationNode))

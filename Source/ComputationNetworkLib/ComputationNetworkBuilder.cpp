@@ -282,9 +282,9 @@ shared_ptr<ComputationNode<ElemType>> ComputationNetworkBuilder<ElemType>::Creat
 }
 
 template <class ElemType>
-shared_ptr<ComputationNode<ElemType>> ComputationNetworkBuilder<ElemType>::CreateROIPoolingNode(const std::wstring& nodeName)
+shared_ptr<ComputationNode<ElemType>> ComputationNetworkBuilder<ElemType>::CreateROIPoolingNode(const std::wstring& nodeName, const size_t H, const size_t W, ImageLayoutKind imageLayoutKind)
 {
-	return net.AddNodeToNetWithElemType(New<ROIPoolingNode<ElemType>>(net.GetDeviceId(), nodeName));
+	return net.AddNodeToNetWithElemType(New<ROIPoolingNode<ElemType>>(net.GetDeviceId(), nodeName, H, W, imageLayoutKind));
 }
 
 // this is the catch-all for all cases not covered as special cases above
@@ -324,6 +324,7 @@ shared_ptr<ComputationNode<ElemType>> ComputationNetworkBuilder<ElemType>::Convo
                                                                                        ImageLayoutKind imageLayout, size_t maxTempMemSizeInSamples,
                                                                                        const std::wstring nodeName)
 {
+
     return net.AddNodeToNetAndAttachInputs(New<ConvolutionNode<ElemType>>(net.GetDeviceId(), nodeName,
                                                                           kernelShape, mapCount, strideShape,
                                                                           sharing, autoPadding, lowerPad, upperPad,
@@ -360,9 +361,9 @@ shared_ptr<ComputationNode<ElemType>> ComputationNetworkBuilder<ElemType>::Avera
 }
 
 template <class ElemType>
-shared_ptr<ComputationNode<ElemType>> ComputationNetworkBuilder<ElemType>::ROIPooling(const ComputationNodePtr inputROIs, const ComputationNodePtr inputValues, const std::wstring nodeName)
+shared_ptr<ComputationNode<ElemType>> ComputationNetworkBuilder<ElemType>::ROIPooling(const ComputationNodePtr inputROIs, const ComputationNodePtr inputValues, const size_t H, const size_t W, ImageLayoutKind imageLayoutKind, const std::wstring nodeName)
 {
-	return net.AddNodeToNetAndAttachInputs(New<ROIPoolingNode<ElemType>>(net.GetDeviceId(), nodeName), { inputROIs, inputValues });
+	return net.AddNodeToNetAndAttachInputs(New<ROIPoolingNode<ElemType>>(net.GetDeviceId(), nodeName, H, W, imageLayoutKind), { inputROIs, inputValues });
 }
 
 template <class ElemType>

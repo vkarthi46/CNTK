@@ -64,6 +64,12 @@ public:
     {
     }
 
+	// constructor for ROIPooling
+	ConvolutionNodeBase(DEVICEID_TYPE deviceId, const wstring& name, const size_t H, const size_t W, ImageLayoutKind imageLayoutKind)
+		: Base(deviceId, name), m_outH(H), m_outW(W), m_imageLayout(imageLayoutKind) 
+	{
+	}
+
 public:
     void Save(File& fstream) const override
     {
@@ -162,6 +168,8 @@ public:
 
     void ForwardProp(const FrameRange& fr) override
     {
+
+		std::cout << "conv node fprop\n";
         Matrix<ElemType> sliceOutputValue = ValueFor(fr);
 
         if (m_poolKind == PoolKind::None)
@@ -196,6 +204,9 @@ protected:
     TensorShape m_upperPad;
     PoolKind m_poolKind;
     ImageLayoutKind m_imageLayout;
+
+	size_t m_outH;
+	size_t m_outW;
 
     size_t m_maxTempMemSizeInSamples;
     shared_ptr<Matrix<ElemType>> m_tempMatrix;
@@ -414,7 +425,7 @@ protected:
 
 
 // -----------------------------------------------------------------------
-// ROIPoolingNode (inputFeature, inputROIs)
+// ROIPoolingNode (inputROIs, inputFeatures)
 // -----------------------------------------------------------------------
 
 template <class ElemType>
@@ -430,16 +441,63 @@ class ROIPoolingNode : public ConvolutionNodeBase<ElemType>, public NumInputs<2>
     return L"ROIPooling";
   }
 public:
+
 	ROIPoolingNode(DEVICEID_TYPE deviceId, const wstring& name)
 		: Base(deviceId, name)
 	{
 	}
+	ROIPoolingNode(DEVICEID_TYPE deviceId, const wstring& name, const size_t H, const size_t W, ImageLayoutKind imageLayoutKind)
+		: Base(deviceId, name, H, W, imageLayoutKind)
+	{
+	}
 
 	ROIPoolingNode(const ScriptableObjects::IConfigRecordPtr configp)
-		: ROIPoolingNode(configp->Get(L"deviceId"), L"<placeholder>")
+		: ROIPoolingNode(configp->Get(L"deviceId"), L"<placeholder>", configp->Get(L"H"), configp->Get(L"W"),
+						 ImageLayoutKindFrom(configp->Get(L"imageLayout")))
 	{
 		AttachInputsFromConfig(configp, GetExpectedNumInputs());
 	}
+
+	void ForwardProp(const FrameRange& fr) override
+	{
+		std::cout << "ROIPooling FPROP\n";
+		Input(0)->Value().Print(nullptr); // input ROIs
+		Input(1)->Value().Print(nullptr); // input feature maps
+
+	}
+
+	void Validate(bool isFinalValidationPass) override
+	{
+		Base::Validate(isFinalValidationPass);
+		InferMBLayoutFromInputsForStandardCase(isFinalValidationPass);
+
+		// get input tensor shape and interpret as image dimensions
+		auto inDims = ImageDimensions(GetInputSampleLayout(1), m_imageLayout);
+
+		if (isFinalValidationPass && (inDims.m_width < m_outW || inDims.m_height < m_outH))
+			InvalidArgument("ROIPoolingNode: inputWidth must >= windowWidth and inputHeight must >= windowHeight.");
+
+		// determine output tensor shape
+		auto outDims = ImageDimensions(m_outW, m_outH, inDims.m_numChannels);
+
+		//m_inputSizePerSample = inDims.m_width * inDims.m_height * inDims.m_numChannels;
+
+		SetDims(outDims.AsTensorShape(m_imageLayout), HasMBLayout());
+
+		if (isFinalValidationPass)
+		{
+			/*// set up various engines and descriptor objects
+			m_geometry = std::make_shared<ConvolveGeometry>(inDims.AsTensorShape(m_imageLayoutKind),
+				ImageDimensions(m_windowWidth, m_windowHeight, 1).AsTensorShape(m_imageLayoutKind),
+				TensorShape(1),
+				ImageDimensions(m_horizontalSubsample, m_verticalSubsample, 1).AsTensorShape(m_imageLayoutKind),
+				ConvolveGeometry::BoolVec{ true },
+				ConvolveGeometry::BoolVec{ false },
+				TensorShape(0),
+				TensorShape(0));*/
+		}
+	}
+
 };
 
 // -----------------------------------------------------------------------

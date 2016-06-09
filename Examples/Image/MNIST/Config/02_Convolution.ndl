@@ -57,7 +57,7 @@ DNN=[
     h1 = DNNImageSigmoidLayer(7, 7, cMap2, h1Dim, pool2, 1)
     ol = DNNLayer(h1Dim, labelDim, h1, 1)
 
-    roi = ROIPooling(labels, o1, pool2, pool1)
+    roi = ROIPooling(labels, conv2, 7, 7)
     
     ce = CrossEntropyWithSoftmax(labels, ol)
     err = ErrorPrediction(labels, ol)
@@ -66,7 +66,7 @@ DNN=[
     FeatureNodes = (features)
     LabelNodes = (labels)
     CriterionNodes = (ce)
-    EvalNodes = (err)
+    EvalNodes = (err, roi)
     OutputNodes = (ol)
 ]
 
