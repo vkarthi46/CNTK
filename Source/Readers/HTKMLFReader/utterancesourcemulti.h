@@ -542,6 +542,7 @@ class minibatchutterancesourcemulti : public minibatchsource
 
         void reset(unsigned int randSeed)
         {
+            assert(randSeed != 0);
             srand(randSeed);
             size_t sweepts = m_randomizedChunks[0][0].globalts;
             size_t totalFrames = m_randomizedChunks[0].back().globalte() - sweepts;
@@ -1200,6 +1201,7 @@ private:
     {
         if (v.size() > RAND_MAX * (size_t) RAND_MAX)
             RuntimeError("randomshuffle: too large set: need to change to different random generator!");
+        assert((unsigned int) randomseed != 0);
         srand((unsigned int) randomseed);
         foreach_index (i, v)
         {
@@ -1252,7 +1254,7 @@ private:
             assert(randomizedchunkrefs[i].size() == allchunks[i].size());
 
             // note that sincew randomshuffle() uses sweep as seed, this will keep the randomization common across all feature streams
-            randomshuffle(randomizedchunkrefs[i], sweep); // bring into random order (with random seed depending on sweep)
+            randomshuffle(randomizedchunkrefs[i], sweep + 1); // bring into random order (with random seed depending on sweep)
         }
 
         // place them onto the global timeline -> randomizedchunks[]
@@ -1348,6 +1350,7 @@ private:
             // check we got those setup right
 
             // we now randomly shuffle randomizedutterancerefs[pos], while considering the constraints of what chunk range needs to be in memory
+            assert((unsigned int) sweep + 1 != 0);
             srand((unsigned int) sweep + 1);
             for (size_t i = 0; i < randomizedutterancerefs.size(); i++)
             {

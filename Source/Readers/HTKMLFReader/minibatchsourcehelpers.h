@@ -254,6 +254,7 @@ public:
 #if 1 // change to 0 to disable randomizing
                 if (map.size() > RAND_MAX * (size_t) RAND_MAX)
                     RuntimeError("randomordering: too large training set: need to change to different random generator!");
+                assert((unsigned int)seed != 0);
                 srand((unsigned int) seed);
                 size_t retries = 0;
                 foreach_index (t, map)

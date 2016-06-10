@@ -53,6 +53,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
     // Resets the current sweep according to the randomization seed provided.
     void SequenceRandomizer::Reset(size_t randSeed)
     {
+        assert((unsigned int)randSeed != 0);
         srand((unsigned int)randSeed);
 
         m_sequenceWindow.clear();

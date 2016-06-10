@@ -701,6 +701,7 @@ private:
     {
         if (v.size() > RAND_MAX * (size_t) RAND_MAX)
             throw std::runtime_error("randomshuffle: too large set: need to change to different random generator!");
+        assert((unsigned int)randomseed != 0);
         srand((unsigned int) randomseed);
         foreach_index (i, v)
         {

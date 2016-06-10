@@ -21,7 +21,7 @@ size_t UCIFastReader<ElemType>::RandomizeSweep(size_t mbStartSample)
 {
     // size_t randomRangePerEpoch = (m_epochSize+m_randomizeRange-1)/m_randomizeRange;
     // return m_epoch*randomRangePerEpoch + epochSample/m_randomizeRange;
-    return mbStartSample / m_randomizeRange;
+    return mbStartSample / m_randomizeRange + 1;
 }
 
 // ReadLine - Read a line
