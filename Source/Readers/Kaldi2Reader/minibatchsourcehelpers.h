@@ -253,7 +253,7 @@ public:
 #if 1 // change to 0 to disable randomizing
                 if (map.size() > RAND_MAX * (size_t) RAND_MAX)
                     throw std::runtime_error("RandomOrdering: too large training set: need to change to different random generator!");
-                assert((unsinged int)seed != 0);
+                assert((unsigned int)seed != 0);
                 srand((unsigned int) seed);
                 size_t retries = 0;
                 foreach_index (t, map)
