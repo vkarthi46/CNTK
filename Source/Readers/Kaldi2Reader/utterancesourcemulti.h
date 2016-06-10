@@ -795,7 +795,7 @@ private:
             assert(randomizedchunkrefs[i].size() == allchunks[i].size());
 
             // note that sincew randomshuffle() uses sweep as seed, this will keep the randomization common across all feature streams
-            randomshuffle(randomizedchunkrefs[i], sweep); // bring into random order (with random seed depending on sweep)
+            randomshuffle(randomizedchunkrefs[i], sweep + 1); // bring into random order (with random seed depending on sweep)
         }
 
         // place them onto the global timeline -> randomizedchunks[]
