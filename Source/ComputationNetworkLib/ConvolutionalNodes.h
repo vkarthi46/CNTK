@@ -168,8 +168,6 @@ public:
 
     void ForwardProp(const FrameRange& fr) override
     {
-
-		std::cout << "conv node fprop\n";
         Matrix<ElemType> sliceOutputValue = ValueFor(fr);
 
         if (m_poolKind == PoolKind::None)
@@ -458,12 +456,22 @@ public:
 		AttachInputsFromConfig(configp, GetExpectedNumInputs());
 	}
 
+	// custom forward prop. need to use adaptive pooling window
+	// for input ROIs. ROIs are input(0). inputFeatureMaps (infm) are Input(1).
+	// ROIs should have dimension [ROI_size, ROIs_per_image, batch_size];
+	// we loop over the bsz dimension and depending on the ROI shape use a different
+	// pooling window size. TODO: depending on the image shape, need to slice differently into the mb.
+	// depends on status of fully conv. for now only works with same-size minibatches.
+
 	void ForwardProp(const FrameRange& fr) override
 	{
 		std::cout << "ROIPooling FPROP\n";
+		std::cout << "ROIPOOLING FIRST INPUT:\n";
 		Input(0)->Value().Print(nullptr); // input ROIs
+		std::cout << "\n\nEND ROIPOOLING FIRST INPUT\n";
+		std::cout << "\n\nROIPOOLING SECOND INPUT:\n";
 		Input(1)->Value().Print(nullptr); // input feature maps
-
+		std::cout << "\n\nEND ROIPOOLING SECOND INPUT";
 	}
 
 	void Validate(bool isFinalValidationPass) override
@@ -473,7 +481,7 @@ public:
 
 		// get input tensor shape and interpret as image dimensions
 		auto inDims = ImageDimensions(GetInputSampleLayout(1), m_imageLayout);
-
+		
 		if (isFinalValidationPass && (inDims.m_width < m_outW || inDims.m_height < m_outH))
 			InvalidArgument("ROIPoolingNode: inputWidth must >= windowWidth and inputHeight must >= windowHeight.");
 
@@ -484,6 +492,7 @@ public:
 
 		SetDims(outDims.AsTensorShape(m_imageLayout), HasMBLayout());
 
+		// don't set geometry yet...need adaptive geometry that depends on ROI shape.
 		if (isFinalValidationPass)
 		{
 			/*// set up various engines and descriptor objects
