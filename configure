@@ -1,4 +1,11 @@
 #!/bin/bash
+#
+# Copyright (c) Microsoft. All rights reserved.
+#
+# Licensed under the MIT license. See LICENSE.md file in the project root
+# for full license information.
+# ==============================================================================
+#
 
 configure=$0
 build_top=$PWD
@@ -26,7 +33,7 @@ openblas_check=include/openblas_config.h
 
 have_kaldi=no
 kaldi_path=
-kaldi_check=src/kaldi.mk 
+kaldi_check=src/kaldi.mk
 
 have_buildtype=no
 buildtype=
@@ -174,7 +181,7 @@ function is_hardlinked ()
     echo $r
 }
 
-function default_use_cuda () 
+function default_use_cuda ()
 {
     if test x$(find_cuda) = x || test x$(find_gdk) = x
     then
@@ -185,7 +192,7 @@ function default_use_cuda ()
 }
 enable_cuda=$(default_use_cuda)
 
-function show_default () 
+function show_default ()
 {
     if test x$1 = x
     then
@@ -688,6 +695,6 @@ then
     echo all clean : >> $makefile
     printf '\t$(MAKE) -C $(dir) BUILD_TOP=$(BUILD_TOP) $@\n' >> $makefile
 fi
-echo run 
+echo run
 echo '>make -j all'
 echo to build

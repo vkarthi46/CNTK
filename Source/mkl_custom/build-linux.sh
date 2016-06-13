@@ -1,4 +1,11 @@
 #!/bin/bash
+#
+# Copyright (c) Microsoft. All rights reserved.
+#
+# Licensed under the MIT license. See LICENSE.md file in the project root
+# for full license information.
+# ==============================================================================
+#
 
 # Stop on error, trace commands
 set -e -x
@@ -31,7 +38,8 @@ cp -p $MKLROOT/../compiler/lib/intel64_lin/libiomp5.so Publish/$CNTKCUSTOMMKLVER
 
 rsync -av --files-from headers.txt $MKLROOT/include Publish/$CNTKCUSTOMMKLVERSION/include
 
-cp -p license.txt Publish/$CNTKCUSTOMMKLVERSION
+cp -p README-for-redistributable.txt Publish/$CNTKCUSTOMMKLVERSION/README.txt
+cp -p ../../LICENSE.md Publish/$CNTKCUSTOMMKLVERSION
 
 cd Publish
 tar -czf ../CNTKCustomMKL-Linux-$CNTKCUSTOMMKLVERSION.tgz $CNTKCUSTOMMKLVERSION

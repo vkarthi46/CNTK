@@ -1,4 +1,11 @@
 @echo off
+REM
+REM Copyright (c) Microsoft. All rights reserved.
+REM
+REM Licensed under the MIT license. See LICENSE.md file in the project root
+REM for full license information.
+REM ==============================================================================
+REM
 echo.
 echo This batch file will build a custom MKL dynamic link library for usage by CNTK.
 echo.
@@ -134,9 +141,15 @@ for /f %%h in (headers.txt) do (
   )
 )
 
-copy license.txt Publish\%CNTKCUSTOMMKLVERSION%
+copy README-for-redistributable.txt Publish\%CNTKCUSTOMMKLVERSION%\README.txt
 if errorlevel 1 (
-  echo Failed to copy license.txt.
+  echo Failed to copy README.
+  exit /b 1
+)
+
+copy ..\..\LICENSE.md Publish\%CNTKCUSTOMMKLVERSION%
+if errorlevel 1 (
+  echo Failed to copy LICENSE.md.
   exit /b 1
 )
 
