@@ -497,7 +497,7 @@ void NDLNodeEvaluatorImpl<ElemType>::Evaluate(NDLNode<ElemType>* node, const wst
 			size_t H = ((NDLNode<ElemType>*) params[id++])->GetScalar();
 			size_t W = ((NDLNode<ElemType>*) params[id++])->GetScalar();
 
-			ImageLayoutKind imageLayoutKind = ImageLayoutKindFrom(node->GetOptionalParameter("imageLayout", "HWC"));
+			ImageLayoutKind imageLayoutKind = ImageLayoutKindFrom(node->GetOptionalParameter("imageLayout", "CHW"));
 
 			nodePtr = builder.ROIPooling(NULL, NULL, H, W, imageLayoutKind, name);
 		}

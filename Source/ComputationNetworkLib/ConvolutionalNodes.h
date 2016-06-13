@@ -328,6 +328,7 @@ public:
 
     void Validate(bool isFinalValidationPass) override
     {
+
         Base::Validate(isFinalValidationPass);
         InferMBLayoutFromInputsForStandardCase(isFinalValidationPass);
 
@@ -465,13 +466,82 @@ public:
 
 	void ForwardProp(const FrameRange& fr) override
 	{
-		std::cout << "ROIPooling FPROP\n";
-		std::cout << "ROIPOOLING FIRST INPUT:\n";
-		Input(0)->Value().Print(nullptr); // input ROIs
-		std::cout << "\n\nEND ROIPOOLING FIRST INPUT\n";
-		std::cout << "\n\nROIPOOLING SECOND INPUT:\n";
-		Input(1)->Value().Print(nullptr); // input feature maps
-		std::cout << "\n\nEND ROIPOOLING SECOND INPUT";
+		//Input(0)->Value().Print(nullptr); // input ROIs
+		// reshape as ROI_sz x ROIs/im x mb_sz
+		//std::cout << string(Input(0)->GetSampleLayout()).c_str();
+
+		// first dimension is roi_size (4) * rois/image, second is mb size
+		int rois_per_image = GetInputSampleLayout(0)[0] / 4;
+
+		fprintf(stderr, "ROI_PER_IMAGE: %d\n", rois_per_image);
+
+		auto inputImgShape = GetInputSampleLayout(1);
+		Matrix<ElemType> inputSlice = Input(1)->ValueFor(fr);
+		Matrix<ElemType> ROIs = Input(0)->ValueFor(fr);
+
+		// our output slice for this minibatch.
+		Matrix<ElemType> outputSlice = ValueFor(fr);
+
+		// input slice is w*h*c x bsz; cols are images.
+		// rois is rois_per_image*4 x bsz; cols are rois for different images.
+		// each ROI is (x, y, w, h) relative to original image size.
+		// todo: read ROIs, compute from ROI data which features to use in the pooling
+		// map and also the kernel size. q: how to slice into inputSlice to get the right features???
+		// how can we compute projection from image -> conv2 output?
+		//fprintf(stderr, "ROIs NUM COLS: %d, ROWS: %d\n", ROIs.GetNumCols(), ROIs.GetNumRows());
+		//fprintf(stderr, "INPUTSLICE NUM COLS: %d, ROWS: %d\n", inputSlice.GetNumCols(), inputSlice.GetNumRows());
+		//fprintf(stderr, "INPUT SHAPE %s\n", string(inputImgShape).c_str());
+
+		// fprop loop. looping over images (columns of inputSlice)
+		for (int img_idx = 0; img_idx < inputSlice.GetNumCols(); img_idx++) {
+			auto img = inputSlice.ColumnSlice(img_idx, 1);
+			auto rois = ROIs.ColumnSlice(img_idx, 1);
+
+			//fprintf(stderr, "IMAGE %d ROI COLUMN:\n", img_idx);
+			//rois.Print(nullptr);
+
+			// loop over rois per image.
+			for (int roi_idx = 0; roi_idx < rois_per_image; roi_idx++) {
+				
+				// roi points are doubles that represent location relative to image
+				int base = roi_idx * 4;
+				double x = rois.GetValue(base, 0);
+				double y = rois.GetValue(base + 1, 0);
+				double w = rois.GetValue(base + 2, 0);
+				double h = rois.GetValue(base + 3, 0);
+				
+				int input_w = inputImgShape[0];
+				int input_h = inputImgShape[1];
+
+				// compute actual spatial location of the ROI in our featuremap.
+				x = int(x * input_w);
+				y = int(y * input_h);
+
+				// make sure rois are at least 1x1.
+				size_t roi_w = size_t(max(int(w * input_w), 1));
+				size_t roi_h = size_t(max(int(h * input_h), 1));
+
+				// ROI input to ConvolveGeometry pointer...keep the same number of channels
+				// as the input image but change the spatial size.
+				TensorShape tmp_input_shape = TensorShape(roi_w, roi_h, inputImgShape[2]);
+
+				//fprintf(stderr, "IMAGE %d ROI %d: (%f %f %f %f)\n", img_idx, roi_idx, x, y, w, h);
+				// grab slice of image corresponding to x,y,w,h
+				// set up conv geometry / conv engine.
+
+				// can i do this part without having the slicing yet?
+				//auto geometry = std::make_shared<ConvolveGeometry>(tmp_input_shape, )
+				
+			}
+		}
+
+		/*
+		auto geometry = std::make_shared<ConvolveGeometry>(inputShape, m_kernelShape, m_mapCount, m_stride,
+			m_sharing, m_autoPad, m_lowerPad, m_upperPad);
+
+		m_convEng = ConvolutionEngine<ElemType>::Create(geometry, m_deviceId, m_imageLayout,
+			m_maxTempMemSizeInSamples, m_poolKind);*/
+
 	}
 
 	void Validate(bool isFinalValidationPass) override
@@ -479,13 +549,16 @@ public:
 		Base::Validate(isFinalValidationPass);
 		InferMBLayoutFromInputsForStandardCase(isFinalValidationPass);
 
-		// get input tensor shape and interpret as image dimensions
 		auto inDims = ImageDimensions(GetInputSampleLayout(1), m_imageLayout);
+		fprintf(stderr, "ROI in dims: W: %d, H: %d, C: %d\n", inDims.m_width, inDims.m_height, inDims.m_numChannels);
 		
 		if (isFinalValidationPass && (inDims.m_width < m_outW || inDims.m_height < m_outH))
 			InvalidArgument("ROIPoolingNode: inputWidth must >= windowWidth and inputHeight must >= windowHeight.");
 
-		// determine output tensor shape
+		// todo: this is technically the correct spatial dimension, but we are also increasing the 
+		// effective minibatch size to bsz * rois_per_image. so we may need a hack to make that work...
+		// not sure how to have different minibatch sizes at different parts of the network in CNTK.
+		// need to figure that out if we want to use softmax on top of pooled features rather than SVM.
 		auto outDims = ImageDimensions(m_outW, m_outH, inDims.m_numChannels);
 
 		//m_inputSizePerSample = inDims.m_width * inDims.m_height * inDims.m_numChannels;
