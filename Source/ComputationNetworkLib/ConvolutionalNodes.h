@@ -64,12 +64,6 @@ public:
     {
     }
 
-	// constructor for ROIPooling
-	ConvolutionNodeBase(DEVICEID_TYPE deviceId, const wstring& name, const size_t H, const size_t W, ImageLayoutKind imageLayoutKind)
-		: Base(deviceId, name), m_outH(H), m_outW(W), m_imageLayout(imageLayoutKind) 
-	{
-	}
-
 public:
     void Save(File& fstream) const override
     {
@@ -428,12 +422,10 @@ protected:
 // -----------------------------------------------------------------------
 
 template <class ElemType>
-class ROIPoolingNode : public ConvolutionNodeBase<ElemType>, public NumInputs<2>
-
+class ROIPoolingNode : public ComputationNode<ElemType>, public NumInputs<2>
 {
-
-  typedef ConvolutionNodeBase<ElemType> Base;
-  UsingConvolutionNodeBaseMembers;
+	typedef ComputationNode<ElemType> Base;
+	UsingComputationNodeMembersBoilerplate;
 
   static const std::wstring TypeName() 
   {
@@ -446,7 +438,7 @@ public:
 	{
 	}
 	ROIPoolingNode(DEVICEID_TYPE deviceId, const wstring& name, const size_t H, const size_t W, ImageLayoutKind imageLayoutKind)
-		: Base(deviceId, name, H, W, imageLayoutKind)
+		: Base(deviceId, name), m_outH(H), m_outW(W), m_imageLayout(imageLayoutKind)
 	{
 	}
 
@@ -473,13 +465,14 @@ public:
 		// first dimension is roi_size (4) * rois/image, second is mb size
 		int rois_per_image = GetInputSampleLayout(0)[0] / 4;
 
-		fprintf(stderr, "ROI_PER_IMAGE: %d\n", rois_per_image);
+		//fprintf(stderr, "ROI_PER_IMAGE: %d\n", rois_per_image);
 
 		auto inputImgShape = GetInputSampleLayout(1);
 		Matrix<ElemType> inputSlice = Input(1)->ValueFor(fr);
 		Matrix<ElemType> ROIs = Input(0)->ValueFor(fr);
 
 		// our output slice for this minibatch.
+		// todo: see shape comment in validate.
 		Matrix<ElemType> outputSlice = ValueFor(fr);
 
 		// input slice is w*h*c x bsz; cols are images.
@@ -524,7 +517,7 @@ public:
 				// ROI input to ConvolveGeometry pointer...keep the same number of channels
 				// as the input image but change the spatial size.
 				TensorShape tmp_input_shape = TensorShape(roi_w, roi_h, inputImgShape[2]);
-
+				//img.Reshape()
 				//fprintf(stderr, "IMAGE %d ROI %d: (%f %f %f %f)\n", img_idx, roi_idx, x, y, w, h);
 				// grab slice of image corresponding to x,y,w,h
 				// set up conv geometry / conv engine.
@@ -535,13 +528,28 @@ public:
 			}
 		}
 
-		/*
-		auto geometry = std::make_shared<ConvolveGeometry>(inputShape, m_kernelShape, m_mapCount, m_stride,
+		
+		/*auto geometry = std::make_shared<ConvolveGeometry>(inputShape, m_kernelShape, m_mapCount, m_stride,
 			m_sharing, m_autoPad, m_lowerPad, m_upperPad);
 
 		m_convEng = ConvolutionEngine<ElemType>::Create(geometry, m_deviceId, m_imageLayout,
 			m_maxTempMemSizeInSamples, m_poolKind);*/
 
+	}
+
+	void Save(File& fstream) const override
+	{
+		Base::Save(fstream);
+		uint32_t imageLayoutKind = (uint32_t)m_imageLayout;
+		fstream << imageLayoutKind << m_outW << m_outH;
+	}
+
+	void Load(File& fstream, size_t modelVersion) override
+	{
+		Base::Load(fstream, modelVersion);
+		uint32_t imageLayoutKind;
+		fstream >> imageLayoutKind >> m_outW >> m_outH;
+		m_imageLayout = (ImageLayoutKind)imageLayoutKind;
 	}
 
 	void Validate(bool isFinalValidationPass) override
@@ -579,6 +587,35 @@ public:
 				TensorShape(0));*/
 		}
 	}
+
+	void BackpropTo(const size_t /*inputIndex*/, const FrameRange& fr) override
+	{
+		// todo
+	}
+
+	void DumpNodeInfo(const bool printValues, const bool printMetadata, File& fstream) const override
+	{
+		Base::DumpNodeInfo(printValues, printMetadata, fstream);
+	}
+
+	void CopyTo(ComputationNodeBasePtr nodeP, const std::wstring& newName, const CopyNodeFlags flags) const override
+	{
+		Base::CopyTo(nodeP, newName, flags);
+		if (flags & CopyNodeFlags::copyNodeValue)
+		{
+			auto node = dynamic_pointer_cast<ROIPoolingNode<ElemType>>(nodeP);
+			node->m_outW = m_outW;
+			node->m_outH = m_outH;
+			node->m_imageLayout = m_imageLayout;
+		}
+	}
+
+
+protected:
+	size_t m_outH, m_outW;
+	ImageLayoutKind m_imageLayout; // how to interpret the tensor (which dimensions are X/Y and C)
+	ConvolveGeometryPtr m_geometry;
+	std::unique_ptr<ConvolutionEngine<ElemType>> m_convEng;
 
 };
 
