@@ -456,6 +456,12 @@ public:
 	// pooling window size. TODO: depending on the image shape, need to slice differently into the mb.
 	// depends on status of fully conv. for now only works with same-size minibatches.
 
+	void RequestMatricesBeforeForwardProp(MatrixPool& matrixPool) override
+	{
+		Base::RequestMatricesBeforeForwardProp(matrixPool);
+		RequestMatrixFromPool(m_tempMatrix, matrixPool);
+	}
+
 	void ForwardProp(const FrameRange& fr) override
 	{
 		//Input(0)->Value().Print(nullptr); // input ROIs
@@ -490,25 +496,26 @@ public:
 			auto img = inputSlice.ColumnSlice(img_idx, 1);
 			auto rois = ROIs.ColumnSlice(img_idx, 1);
 
-			//fprintf(stderr, "IMAGE %d ROI COLUMN:\n", img_idx);
-			//rois.Print(nullptr);
+			fprintf(stderr, "IMAGE %d COLUMN:\n", img_idx);
+			img.Print(nullptr);
 
 			// loop over rois per image.
 			for (int roi_idx = 0; roi_idx < rois_per_image; roi_idx++) {
 				
 				// roi points are doubles that represent location relative to image
 				int base = roi_idx * 4;
-				double x = rois.GetValue(base, 0);
-				double y = rois.GetValue(base + 1, 0);
+				double sc_x = rois.GetValue(base, 0);
+				double sc_y = rois.GetValue(base + 1, 0);
 				double w = rois.GetValue(base + 2, 0);
 				double h = rois.GetValue(base + 3, 0);
 				
 				int input_w = inputImgShape[0];
 				int input_h = inputImgShape[1];
+				int num_channels = inputImgShape[2];
 
 				// compute actual spatial location of the ROI in our featuremap.
-				x = int(x * input_w);
-				y = int(y * input_h);
+				int x = int(sc_x * input_w);
+				int y = int(sc_y * input_h);
 
 				// make sure rois are at least 1x1.
 				size_t roi_w = size_t(max(int(w * input_w), 1));
@@ -516,11 +523,41 @@ public:
 
 				// ROI input to ConvolveGeometry pointer...keep the same number of channels
 				// as the input image but change the spatial size.
-				TensorShape tmp_input_shape = TensorShape(roi_w, roi_h, inputImgShape[2]);
-				//img.Reshape()
-				//fprintf(stderr, "IMAGE %d ROI %d: (%f %f %f %f)\n", img_idx, roi_idx, x, y, w, h);
-				// grab slice of image corresponding to x,y,w,h
-				// set up conv geometry / conv engine.
+				TensorShape tmp_input_shape = TensorShape(roi_w, roi_h, num_channels);
+				
+				// todo: share / resize this between loop iterations?
+				// todo: look at matrix pool / m_tempMatrix
+				m_tempMatrix->Resize(roi_w*roi_h*num_channels, 1);
+				fprintf(stderr, "temp matrix has %d elems\n", m_tempMatrix->GetNumElements());
+				Matrix<ElemType> tmp_input = Matrix<ElemType>::Zeros(roi_w*roi_h*num_channels, 1, -1);
+
+				// slice into the input feature map based on the ROI to grab the right
+				// activations and store them in tmp_input. repeat for all channels.
+				// ordered this way so we can read big slices continuously.
+				/*for (int col_idx = x - 1; col_idx < x - 1 + roi_w; col_idx++) {
+					start_idx = (y + col_idx * input_h)*num_channels;
+					finish_idx = num_channels - 1 + (y + roi_h + col_idx * input_h)*num_channels;
+
+					// something like this
+					tmp_input.Append(img.RowSlice(start_idx, finish_idx - start_idx));
+				}*/
+
+				fprintf(stderr, "begin slicing for ROI %d: (%d %d %f %f)\n", roi_idx, x, y, (double)roi_w, (double)roi_h);
+				// todo: why can't we do this faster...i want to access big slices like above
+				for (int col_idx = int(x); col_idx < int(x + roi_w); col_idx++) {
+					for (int row_idx = y; row_idx < int(y + roi_h); row_idx++) {
+						for (int chan_idx = 0; chan_idx < num_channels; chan_idx++) {
+							int access_idx = chan_idx + (row_idx + col_idx * input_h)*num_channels;
+							fprintf(stderr, "access index %d\n", access_idx);
+							auto val = img.GetValue(chan_idx + (row_idx + col_idx * input_h)*num_channels, 0);
+							fprintf(stderr, "got val %f\n", val);
+							// set value offset by (x,y).
+							fprintf(stderr, "setting %d in tmp_input\n", chan_idx + (row_idx - y + (col_idx - x)*roi_h)*num_channels);
+							fprintf(stderr, "current value for %d in tmp_input is %f\n", chan_idx + (row_idx - y + (col_idx - x)*roi_h)*num_channels, tmp_input.GetValue(chan_idx + (row_idx - y + (col_idx - x)*roi_h)*num_channels, 0));
+							tmp_input(chan_idx + (row_idx - y + (col_idx - x)*roi_h)*num_channels, 0) = val;
+						}
+					}
+				}
 
 				// can i do this part without having the slicing yet?
 				//auto geometry = std::make_shared<ConvolveGeometry>(tmp_input_shape, )
@@ -558,6 +595,8 @@ public:
 		InferMBLayoutFromInputsForStandardCase(isFinalValidationPass);
 
 		auto inDims = ImageDimensions(GetInputSampleLayout(1), m_imageLayout);
+		//size_t rois_per_image = GetInputSampleLayout(0)[0] / 4;
+
 		fprintf(stderr, "ROI in dims: W: %d, H: %d, C: %d\n", inDims.m_width, inDims.m_height, inDims.m_numChannels);
 		
 		if (isFinalValidationPass && (inDims.m_width < m_outW || inDims.m_height < m_outH))
@@ -615,6 +654,7 @@ protected:
 	size_t m_outH, m_outW;
 	ImageLayoutKind m_imageLayout; // how to interpret the tensor (which dimensions are X/Y and C)
 	ConvolveGeometryPtr m_geometry;
+	shared_ptr<Matrix<ElemType>> m_tempMatrix;
 	std::unique_ptr<ConvolutionEngine<ElemType>> m_convEng;
 
 };
