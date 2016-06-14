@@ -52,11 +52,25 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         //  - GetMinibatch() --fills the inputMatrices and copies the MBLayout from Reader into inputMatrices
         //  - SetActualMiniBatchSizeFromFeatures()  --tells Network to resize the nodes' buffers
         // with the special twist that in presence of parallelization, there is some decimation involved.
+#define IMAGE_OP_TEST
+#ifdef IMAGE_OP_TEST
+		std::string ofName("tmp");
+		if (mpi != nullptr) {
+			ofName += (char)mpi->CurrentNodeRank();
+		}
+		std::ofstream fout(ofName, std::ios::app);
+		std::streambuf *buf = std::cout.rdbuf(fout.rdbuf());
+#endif
 
         bool wasDataRead = trainSetDataReader.GetMinibatch(inputMatrices); // fill in the minibatch data into the Input nodes' buffers directly
         // If this returns false, the matrices may contain garbage or not sized to 0 columns.
         // On the other hand, if it returns a 0-column matrix, that would be a perfectly cromulent minibatch (in case of data parallelism with distributed reading).
         // If a passed matrix does not match a reader section, that is an error.
+
+#ifdef IMAGE_OP_TEST
+		std::cout.rdbuf(buf);
+		fout.close();
+#endif
 
         // if no data read then we are done
         if (!wasDataRead)

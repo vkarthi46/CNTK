@@ -10,6 +10,8 @@
 #include "Transformer.h"
 #include "SequenceEnumerator.h"
 
+#include <iostream>
+
 namespace Microsoft { namespace MSR { namespace CNTK {
 
 // A pair of a transformer and the stream name to which the transformer should be a applied.
@@ -69,6 +71,11 @@ public:
         {
             return sequences;
         }
+
+		size_t exportSize = sequences.m_data.front().size();
+		for (int j = 0; j < exportSize; j++) {
+			std::cout << sequences.m_data[0][j]->m_id << " ";
+		}
 
 #pragma omp parallel for schedule(dynamic)
         for (int j = 0; j < sequences.m_data.front().size(); ++j)
