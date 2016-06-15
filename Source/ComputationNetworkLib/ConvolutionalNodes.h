@@ -449,7 +449,7 @@ public:
 		AttachInputsFromConfig(configp, GetExpectedNumInputs());
 	}
 
-	// custom forward prop. need to use adaptive pooling window
+	// use adaptive pooling window
 	// for input ROIs. ROIs are input(0). inputFeatureMaps (infm) are Input(1).
 	// ROIs should have dimension [ROI_size, ROIs_per_image, batch_size];
 	// we loop over the bsz dimension and depending on the ROI shape use a different
@@ -481,6 +481,14 @@ public:
 		// todo: see shape comment in validate.
 		Matrix<ElemType> outputSlice = ValueFor(fr);
 
+		// outslice is filled in "CHWR" format.
+		// outslice(roi_idx,c,h,w) = outslice(roi_idx * roi_size + chan + (row + col*height)*num_chan)
+		// outslice should be e.g. rois_per_image*7*7*32 x 32
+		// can read ROIs contiguously.
+		
+
+
+
 		// input slice is w*h*c x bsz; cols are images.
 		// rois is rois_per_image*4 x bsz; cols are rois for different images.
 		// each ROI is (x, y, w, h) relative to original image size.
@@ -489,89 +497,116 @@ public:
 		// how can we compute projection from image -> conv2 output?
 		//fprintf(stderr, "ROIs NUM COLS: %d, ROWS: %d\n", ROIs.GetNumCols(), ROIs.GetNumRows());
 		//fprintf(stderr, "INPUTSLICE NUM COLS: %d, ROWS: %d\n", inputSlice.GetNumCols(), inputSlice.GetNumRows());
-		//fprintf(stderr, "INPUT SHAPE %s\n", string(inputImgShape).c_str());
+		//fprintf(stderr, "OUTPUT SHAPE: (%lu, %lu)\n", (unsigned long)outputSlice.GetNumRows(), (unsigned long)outputSlice.GetNumCols());
+
+		int input_w = inputImgShape[0];
+		int input_h = inputImgShape[1];
+		int num_channels = inputImgShape[2];
+		int roi_output_size = m_outH*m_outW*num_channels;
 
 		// fprop loop. looping over images (columns of inputSlice)
+
+#pragma omp parallel for
 		for (int img_idx = 0; img_idx < inputSlice.GetNumCols(); img_idx++) {
 			auto img = inputSlice.ColumnSlice(img_idx, 1);
 			auto rois = ROIs.ColumnSlice(img_idx, 1);
 
-			fprintf(stderr, "IMAGE %d COLUMN:\n", img_idx);
-			img.Print(nullptr);
+			//fprintf(stderr, "IMAGE %d COLUMN:\n", img_idx);
+			//img.Print(nullptr);
 
 			// loop over rois per image.
+#pragma omp parallel for
 			for (int roi_idx = 0; roi_idx < rois_per_image; roi_idx++) {
-				
-				// roi points are doubles that represent location relative to image
+
 				int base = roi_idx * 4;
+
+				// scaled ROI numbers (relative to original image size)
+				// roi points are doubles that represent location relative to image
 				double sc_x = rois.GetValue(base, 0);
 				double sc_y = rois.GetValue(base + 1, 0);
-				double w = rois.GetValue(base + 2, 0);
-				double h = rois.GetValue(base + 3, 0);
-				
-				int input_w = inputImgShape[0];
-				int input_h = inputImgShape[1];
-				int num_channels = inputImgShape[2];
+				double sc_w = rois.GetValue(base + 2, 0);
+				double sc_h = rois.GetValue(base + 3, 0);
 
 				// compute actual spatial location of the ROI in our featuremap.
-				int x = int(sc_x * input_w);
-				int y = int(sc_y * input_h);
+				int x = (int)round(sc_x * input_w);
+				int y = (int)round(sc_y * input_h);
+				int roi_w = (int)max(round(sc_w * input_w), 1.0);
+				int roi_h = (int)max(round(sc_h * input_h), 1.0);
 
-				// make sure rois are at least 1x1.
-				size_t roi_w = size_t(max(int(w * input_w), 1));
-				size_t roi_h = size_t(max(int(h * input_h), 1));
+				//fprintf(stderr, "ROI %d: (X, Y, W, H) in infm: (%d, %d, %d, %d)\n", roi_idx, x, y, roi_w, roi_h);
 
-				// ROI input to ConvolveGeometry pointer...keep the same number of channels
-				// as the input image but change the spatial size.
-				TensorShape tmp_input_shape = TensorShape(roi_w, roi_h, num_channels);
-				
-				// todo: share / resize this between loop iterations?
-				// todo: look at matrix pool / m_tempMatrix
-				m_tempMatrix->Resize(roi_w*roi_h*num_channels, 1);
-				fprintf(stderr, "temp matrix has %d elems\n", m_tempMatrix->GetNumElements());
-				Matrix<ElemType> tmp_input = Matrix<ElemType>::Zeros(roi_w*roi_h*num_channels, 1, -1);
+				const double winW = double(roi_w) / double(m_outW);
+				const double winH = double(roi_h) / double(m_outH);
 
-				// slice into the input feature map based on the ROI to grab the right
-				// activations and store them in tmp_input. repeat for all channels.
-				// ordered this way so we can read big slices continuously.
-				/*for (int col_idx = x - 1; col_idx < x - 1 + roi_w; col_idx++) {
-					start_idx = (y + col_idx * input_h)*num_channels;
-					finish_idx = num_channels - 1 + (y + roi_h + col_idx * input_h)*num_channels;
+				// from Ross Girshick fast-rcnn caffe cpu
+				// loop over spatial locations in output.
+				for (int outw = 0; outw < m_outW; outw++) {
+					for (int outh = 0; outh < m_outH; outh++) {
+						//fprintf(stderr, "computing output spatial location %d %d\n", outw, outh);
 
-					// something like this
-					tmp_input.Append(img.RowSlice(start_idx, finish_idx - start_idx));
-				}*/
+						// compute the top left corner of the input
+						// spatial window corresponding to this output unit
+						int hstart = (int)floor(double(outh)*winH);
+						int wstart = (int)floor(double(outw)*winW);
 
-				fprintf(stderr, "begin slicing for ROI %d: (%d %d %f %f)\n", roi_idx, x, y, (double)roi_w, (double)roi_h);
-				// todo: why can't we do this faster...i want to access big slices like above
-				for (int col_idx = int(x); col_idx < int(x + roi_w); col_idx++) {
-					for (int row_idx = y; row_idx < int(y + roi_h); row_idx++) {
-						for (int chan_idx = 0; chan_idx < num_channels; chan_idx++) {
-							int access_idx = chan_idx + (row_idx + col_idx * input_h)*num_channels;
-							fprintf(stderr, "access index %d\n", access_idx);
-							auto val = img.GetValue(chan_idx + (row_idx + col_idx * input_h)*num_channels, 0);
-							fprintf(stderr, "got val %f\n", val);
-							// set value offset by (x,y).
-							fprintf(stderr, "setting %d in tmp_input\n", chan_idx + (row_idx - y + (col_idx - x)*roi_h)*num_channels);
-							fprintf(stderr, "current value for %d in tmp_input is %f\n", chan_idx + (row_idx - y + (col_idx - x)*roi_h)*num_channels, tmp_input.GetValue(chan_idx + (row_idx - y + (col_idx - x)*roi_h)*num_channels, 0));
-							tmp_input(chan_idx + (row_idx - y + (col_idx - x)*roi_h)*num_channels, 0) = val;
+						// compute bottom right corner (not included)
+						int hend = (int)ceil(double(outh + 1) * winH);
+						int wend = (int)ceil(double(outw + 1) * winW);
+
+						// offset window based on ROI top left corner.
+						// these indices are into the input slice.
+						hstart = min(max(hstart + y, 0), input_h); // need - 1 here?
+						hend = min(max(hend + y, 0), input_h);
+						wstart = min(max(wstart + x, 0), input_w); // need - 1 here?
+						wend = min(max(wend + x, 0), input_w);
+
+						//fprintf(stderr, "ROI window: (xmin ymin xmax ymax): (%d %d %d %d)\n", wstart, hstart, wend, hend);
+
+						bool isempty = (hend <= hstart) || (wend <= wstart);
+
+						for (int c = 0; c < num_channels; c++) {
+							int output_idx = roi_idx*roi_output_size + c + (outh + outw*m_outH)*num_channels;
+							//fprintf(stderr, "going in output location %d\n", output_idx);
+							outputSlice(output_idx, img_idx) = -1;
+
+							if (isempty)
+								outputSlice(output_idx, img_idx) = 0;
+
+							for (int h = hstart; h < hend; h++) {
+								for (int w = wstart; w < wend; w++) {
+									int data_idx = c + (h + w*input_h)*num_channels;
+									if (img(data_idx, 0) > outputSlice(output_idx, img_idx)) {
+										outputSlice(output_idx, img_idx) = img(data_idx, 0);
+									}
+								}
+							}
 						}
 					}
 				}
-
-				// can i do this part without having the slicing yet?
-				//auto geometry = std::make_shared<ConvolveGeometry>(tmp_input_shape, )
-				
 			}
+
+			/*// for debugging. output image slice & roi slice for channel 0.
+			if (img_idx == 0) {
+				Matrix<ElemType> imgMat = Matrix<ElemType>::Zeros(14, 14, m_deviceId);
+				for (int w = 0; w < 14; w++) {
+					for (int h = 0; h < 14; h++) {
+						imgMat(w, h) = img((h + w * 14) * 32, 0);
+					}
+				}
+
+				Matrix<ElemType> roiMat = Matrix<ElemType>::Zeros(7, 7, m_deviceId);
+				for (int w = 0; w < 7; w++) {
+					for (int h = 0; h < 7; h++) {
+						roiMat(w, h) = outputSlice((h + w * 7) * 32, 0);
+					}
+				}
+
+				fprintf(stderr, "IMAGE MAT:\n");
+				imgMat.Print(nullptr);
+				fprintf(stderr, "ROI MAT:\n");
+				roiMat.Print(nullptr);
+			}*/
 		}
-
-		
-		/*auto geometry = std::make_shared<ConvolveGeometry>(inputShape, m_kernelShape, m_mapCount, m_stride,
-			m_sharing, m_autoPad, m_lowerPad, m_upperPad);
-
-		m_convEng = ConvolutionEngine<ElemType>::Create(geometry, m_deviceId, m_imageLayout,
-			m_maxTempMemSizeInSamples, m_poolKind);*/
-
 	}
 
 	void Save(File& fstream) const override
@@ -595,7 +630,10 @@ public:
 		InferMBLayoutFromInputsForStandardCase(isFinalValidationPass);
 
 		auto inDims = ImageDimensions(GetInputSampleLayout(1), m_imageLayout);
-		//size_t rois_per_image = GetInputSampleLayout(0)[0] / 4;
+		size_t rois_per_image = GetInputSampleLayout(0)[0] / 4;
+
+		if (isFinalValidationPass && m_imageLayout != ImageLayoutKind::CHW)
+			InvalidArgument("ROIPoolingNode only supports CHW image layout.");
 
 		fprintf(stderr, "ROI in dims: W: %d, H: %d, C: %d\n", inDims.m_width, inDims.m_height, inDims.m_numChannels);
 		
@@ -606,25 +644,10 @@ public:
 		// effective minibatch size to bsz * rois_per_image. so we may need a hack to make that work...
 		// not sure how to have different minibatch sizes at different parts of the network in CNTK.
 		// need to figure that out if we want to use softmax on top of pooled features rather than SVM.
-		auto outDims = ImageDimensions(m_outW, m_outH, inDims.m_numChannels);
+		//auto outDims = ImageDimensions(m_outW, m_outH, inDims.m_numChannels);
 
-		//m_inputSizePerSample = inDims.m_width * inDims.m_height * inDims.m_numChannels;
-
-		SetDims(outDims.AsTensorShape(m_imageLayout), HasMBLayout());
-
-		// don't set geometry yet...need adaptive geometry that depends on ROI shape.
-		if (isFinalValidationPass)
-		{
-			/*// set up various engines and descriptor objects
-			m_geometry = std::make_shared<ConvolveGeometry>(inDims.AsTensorShape(m_imageLayoutKind),
-				ImageDimensions(m_windowWidth, m_windowHeight, 1).AsTensorShape(m_imageLayoutKind),
-				TensorShape(1),
-				ImageDimensions(m_horizontalSubsample, m_verticalSubsample, 1).AsTensorShape(m_imageLayoutKind),
-				ConvolveGeometry::BoolVec{ true },
-				ConvolveGeometry::BoolVec{ false },
-				TensorShape(0),
-				TensorShape(0));*/
-		}
+		// hack for now...4D tensor.
+		SetDims(TensorShape(m_outW, m_outH, inDims.m_numChannels, rois_per_image), HasMBLayout());
 	}
 
 	void BackpropTo(const size_t /*inputIndex*/, const FrameRange& fr) override
