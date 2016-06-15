@@ -752,7 +752,7 @@ private:
                 randomizedchunkrefs[i].push_back(allchunks[i].begin() + j);
             assert(randomizedchunkrefs[i].size() == allchunks[i].size());
 
-            // note that sincew randomshuffle() uses sweep as seed, this will keep the randomization common across all feature streams
+            // note that since we use sweep as seed, this will keep the randomization common across all feature streams
             m_rng.seed((unsigned long)sweep);
             std::shuffle(randomizedchunkrefs[i].begin(), randomizedchunkrefs[i].end(), m_rng);
         }
