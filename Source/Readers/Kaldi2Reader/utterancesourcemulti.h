@@ -753,7 +753,8 @@ private:
             assert(randomizedchunkrefs[i].size() == allchunks[i].size());
 
             // note that sincew randomshuffle() uses sweep as seed, this will keep the randomization common across all feature streams
-            randomshuffle(randomizedchunkrefs[i], sweep); // bring into random order (with random seed depending on sweep)
+            m_rng.seed((unsigned long)sweep);
+            std::shuffle(randomizedchunkrefs[i].begin(), randomizedchunkrefs[i].end(), m_rng);
         }
 
         // place them onto the global timeline -> randomizedchunks[]
