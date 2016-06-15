@@ -108,7 +108,6 @@ cv::Mat ZipByteReader::Read(size_t seqId, const std::string& path)
 
     cv::Mat img;
     {
-        PROFILE_SCOPE(profilerEvtImageDecoding);
         img = cv::imdecode(cv::Mat(1, (int)size, CV_8UC1, contents.data()), cv::IMREAD_COLOR);
     }
     

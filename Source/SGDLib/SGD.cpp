@@ -358,6 +358,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
         // Awlays skip the first epoch for profiling to avoid startup behavior
         if (i > startEpoch) ProfilerEnable(true);
         PROFILE_SCOPE(profilerEvtMainEpochExt);
+        auto profilerState = ProfilerTimeBegin();
 
         // Synchronize all ranks before proceeding to ensure that
         // rank 0 has finished writing the previous model file
@@ -365,6 +366,9 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
         {
             m_mpi->WaitAll();
         }
+
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochWait1);
+        profilerState = ProfilerTimeBegin();
 
         Timer timer;
         timer.Start();
@@ -465,6 +469,9 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
 
         EpochCriterion epochCriterion; // criterion values are returned in this
         std::vector<EpochCriterion> epochEvalErrors(evaluationNodes.size());
+
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochAdj1);
+
         TrainOneEpoch(net,
                       refNet,
                       refNode,
@@ -481,6 +488,9 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
                       learnableNodes, smoothedGradients,
                       epochCriterion, epochEvalErrors,
                       cudaProfilerTimer);
+
+        profilerState = ProfilerTimeBegin();
+
         totalTrainingSamplesSeen += epochCriterion.second; // aggregate #training samples, for logging purposes only
 
         timer.Stop();
@@ -659,6 +669,9 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
             epochsNotCountedInAvgCriterion = 0;
         }
 
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochAdj2);
+        profilerState = ProfilerTimeBegin();
+
         // Synchronize all ranks before proceeding to ensure that
         // nobody tries reading the checkpoint file at the same time
         // as rank 0 deleting it below
@@ -666,6 +679,9 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
         {
             m_mpi->WaitAll();
         }
+
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochWait2);
+        profilerState = ProfilerTimeBegin();
 
         // persist model and check-point info
         if ((m_mpi == nullptr) || m_mpi->IsMainNode())
@@ -700,6 +716,8 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
             LOGPRINTF(stderr, "learnRate per sample is reduced to %.8g which is below 1e-12. stop training.\n",
                       learnRatePerSample);
         }
+
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochCheckpoint);
     }
     // --- END OF MAIN EPOCH LOOP
 
@@ -870,7 +888,7 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
     bool noMoreSamplesToProcess = false;
     for (;;)
     {
-        auto minibatchProfilerScope = ProfilerTimeBegin(profilerEvtMainMinibatch);
+        auto minibatchProfilerState = ProfilerTimeBegin();
 
         cudaProfilerTimer.Update();
 
@@ -878,24 +896,27 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
         // TODO: is it guaranteed that the GPU is already completed at this point, is it safe to overwrite the buffers?
         size_t actualMBSize = 0;
 
-        auto profilerScope = ProfilerTimeBegin(profilerEvtMainGetMinibatch);
+        auto profilerState = ProfilerTimeBegin();
         bool wasDataRead = DataReaderHelpers::GetMinibatchIntoNetwork<ElemType>(*trainSetDataReader, net, criterionNodes[0],
             useDistributedMBReading, useParallelTrain, *inputMatrices, actualMBSize, m_mpi);
 
         if (!wasDataRead && (!useDistributedMBReading || noMoreSamplesToProcess)) // in case of distributed reading, we do a few more loops until all ranks have completed
         {
-            ProfilerTimeCancel(&profilerScope);
-            ProfilerTimeCancel(&minibatchProfilerScope);
             break;                                                                // end of epoch
         }
-        ProfilerTimeEnd(profilerScope);
-        profilerScope = ProfilerTimeBegin(profilerEvtMainFB);
-
-        // Note: If !wasDataRead then the data that GetMinibatchIntoNetwork() was supposed to full in are undefined.
+        
+        // Note: If !wasDataRead then the data that GetMinibatchIntoNetwork() was supposed to fill in are undefined.
         // Must not touch them.
 
         if (!wasDataRead)
+        {
             actualMBSize = 0; // (undefined if !wasDataRead)
+            ProfilerEnable(false);
+        }
+
+        ProfilerSyncGpu();
+        ProfilerTimeEnd(profilerState, profilerEvtMainGetMinibatch);
+        profilerState = ProfilerTimeBegin();
 
         nSamplesSinceLastModelSync += actualMBSize;
 
@@ -975,15 +996,11 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
             if (actualNumSubminibatches > 1)
                 smbDispatcher.DoneWithCurrentMinibatch();
 
-            
         } // if (actualMBSize > 0)
 
-#ifndef CPUONLY
-        cudaDeviceSynchronize();
-#endif
-
-        ProfilerTimeEnd(profilerScope);
-        profilerScope = ProfilerTimeBegin(profilerEvtMainGradient);
+        ProfilerSyncGpu();
+        ProfilerTimeEnd(profilerState, profilerEvtMainFB);
+        profilerState = ProfilerTimeBegin();
 
         // for progress and statistics, we should only count frames that are not gaps
         // BUGBUG: Once we have multiple layouts, this must be done on a per-criterion basis.
@@ -1053,8 +1070,9 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
                 epochEvalErrors[i] += m_gradHeader->evalErrors[i];
         }
 
-        ProfilerTimeEnd(profilerScope);
-        profilerScope = ProfilerTimeBegin(profilerEvtMainWeights);
+        ProfilerSyncGpu();
+        ProfilerTimeEnd(profilerState, profilerEvtMainGradient);
+        profilerState = ProfilerTimeBegin();
 
         // update model parameters
         if ((aggregateNumSamples > 0) && (learnRatePerSample > m_minLearnRate * 0.01))
@@ -1081,6 +1099,7 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
 #endif
                 }
             }
+            
         }
 
         // aggregation by model averaging
@@ -1101,9 +1120,10 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
             }
         }
 
-        ProfilerTimeEnd(profilerScope);
-        profilerScope = ProfilerTimeBegin(profilerEvtMainPost);
-
+        ProfilerSyncGpu();
+        ProfilerTimeEnd(profilerState, profilerEvtMainWeights);
+        profilerState = ProfilerTimeBegin();
+        
         timer.Stop();
         numMBsRun++;
 
@@ -1217,8 +1237,9 @@ size_t SGD<ElemType>::TrainOneEpoch(ComputationNetworkPtr net,
 
         profiler.NextSample();
     
-        ProfilerTimeEnd(profilerScope);
-        ProfilerTimeEnd(minibatchProfilerScope);
+        ProfilerSyncGpu();
+        ProfilerTimeEnd(profilerState, profilerEvtMainPost);
+        ProfilerTimeEnd(minibatchProfilerState, profilerEvtMainMinibatch);
     }
 
     // --- END MAIN MINIBATCH LOOP

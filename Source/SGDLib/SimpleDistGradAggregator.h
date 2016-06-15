@@ -209,7 +209,7 @@ private:
     void AggregateGradientsImpl(const std::vector<Matrix<ElemType>*>& gradients, DistGradHeader* headerCPU, bool showSyncPerfStats)
     {
         PROFILE_SCOPE(profilerEvtGradient32);
-        auto profilerState = ProfilerTimeBegin(profilerEvtGradientAsyncComm132);
+        auto profilerState = ProfilerTimeBegin();
 
         Timer aggregationTimer;
         int deviceId = gradients[0]->GetDeviceId();
@@ -286,8 +286,8 @@ private:
             MPI_Iallreduce(MPI_IN_PLACE, reductionBuffer, gradients[i]->GetNumElements(), MPIWrapper::GetDataType(reductionBuffer), MPI_SUM, m_mpi->Communicator(), &allReduceRequests[i]) || MpiFail("MPI_Iallreduce");
         }
 
-        ProfilerTimeEnd(profilerState);
-        profilerState = ProfilerTimeBegin(profilerEvtGradientWaitHeaders32);
+        ProfilerTimeEnd(profilerState, profilerEvtGradientAsyncComm132);
+        profilerState = ProfilerTimeBegin();
 
         // On the main node wait for the headers to arrive and aggregate
         if (m_mpi->IsMainNode())
@@ -311,8 +311,8 @@ private:
             assert(numNodesHeadersReceivedFrom == (NumProc() - 1));
         }
 
-        ProfilerTimeEnd(profilerState);
-        profilerState = ProfilerTimeBegin(profilerEvtGradientAsyncComm232);
+        ProfilerTimeEnd(profilerState, profilerEvtGradientWaitHeaders32);
+        profilerState = ProfilerTimeBegin();
 
         MPI_Request recvAggHeaderRequest;
         // Initiate receive of the aggregate header
@@ -333,8 +333,8 @@ private:
             }
         }
 
-        ProfilerTimeEnd(profilerState);
-        profilerState = ProfilerTimeBegin(profilerEvtGradientWaitGradients32);
+        ProfilerTimeEnd(profilerState, profilerEvtGradientAsyncComm232);
+        profilerState = ProfilerTimeBegin();
 
         // Wait for the allreduce operations to finish and initiate transfer back to the GPU if needed
         for (size_t i = 0; i < numGradMatrices; ++i)
@@ -347,8 +347,8 @@ private:
             }
         }
 
-        ProfilerTimeEnd(profilerState);
-        profilerState = ProfilerTimeBegin(profilerEvtGradientWaitHeaders32);
+        ProfilerTimeEnd(profilerState, profilerEvtGradientWaitGradients32);
+        profilerState = ProfilerTimeBegin();
 
         // Wait to receive aggregate header
         if (!m_mpi->IsMainNode())
@@ -356,8 +356,8 @@ private:
             MPI_Wait(&recvAggHeaderRequest, MPI_STATUSES_IGNORE) || MpiFail("MPI_Wait");
         }
 
-        ProfilerTimeEnd(profilerState);
-        profilerState = ProfilerTimeBegin(profilerEvtGradientWaitCompletion32);
+        ProfilerTimeEnd(profilerState, profilerEvtGradientWaitHeaders32);
+        profilerState = ProfilerTimeBegin();
 
         // Wait for all the transfers to finish
         if (deviceId >= 0)
@@ -385,7 +385,7 @@ private:
             fprintf(stderr, "Actual gradient aggregation time: %.6g\n", epochTime);
         }
 
-        ProfilerTimeEnd(profilerState);
+        ProfilerTimeEnd(profilerState, profilerEvtGradientWaitCompletion32);
     }
 
 private:

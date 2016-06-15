@@ -78,7 +78,7 @@ void SetupProfiling(ProfilerContext& profilerContext, const ConfigParamType& con
     {
         profilerContext.Init(config(L"profilerDirectory", "./profiler").c_str(),
                              config(L"profilerBufferSize", static_cast<uint64_t>(32ull * 1024ull * 1024ull)),
-                             std::to_string(nodeRank).c_str());
+                             std::to_string(nodeRank).c_str(), config(L"profilerSyncGpu", false));
     }
 }
 
@@ -515,6 +515,9 @@ int wmainWithBS(int argc, wchar_t* argv[]) // called from wmain which is a wrapp
     // Setup profiling
     ProfilerContext profilerContext;
     SetupProfiling<ScriptableObjects::IConfigRecord>(profilerContext, config, paralleltrain ? (int)mpi->CurrentNodeRank() : 0);
+#ifndef CPUONLY
+    AsyncGPUProfiler gpuProfiler;
+#endif
 
     // execute the actions
     // std::string type = config(L"precision", "float");
@@ -657,6 +660,9 @@ int wmainOldCNTKConfig(int argc, wchar_t* argv[])
     // Setup profiling
     ProfilerContext profilerContext;
     SetupProfiling<ConfigParameters>(profilerContext, config, paralleltrain ? (int)mpi->CurrentNodeRank() : 0);
+#ifndef CPUONLY
+    AsyncGPUProfiler gpuProfiler;
+#endif
 
     // run commands
     std::string type = config(L"precision", "float");

@@ -33,6 +33,9 @@ enum ProfilerEvents
     profilerSepSpace0,
 
     profilerEvtMainEpochExt,
+    profilerEvtMainEpochWait1,
+    profilerEvtMainEpochAdj1,
+
     profilerEvtMainEpochInt,
     profilerEvtMainMinibatch,
     profilerEvtMainGetMinibatch,
@@ -40,6 +43,10 @@ enum ProfilerEvents
     profilerEvtMainGradient,
     profilerEvtMainWeights,
     profilerEvtMainPost,
+
+    profilerEvtMainEpochAdj2,
+    profilerEvtMainEpochWait2,
+    profilerEvtMainEpochCheckpoint,
 
     // MPI/Gradient aggregation multithreaded events
     profilerSepSpace1,
@@ -62,33 +69,28 @@ enum ProfilerEvents
     profilerEvtGradientWaitGradients32,
     profilerEvtGradientWaitCompletion32,
 
-    // ImageReader multithreaded events
+    // Data reader events
     profilerSepSpace3,
-    profilerSepImageReader,
+    profilerSepDataReader,
     profilerSepSpace4,
 
-    profilerEvtImageDecoding,
+    profilerEvtReadMinibatch,
     profilerEvtZipReaderThroughput,
 
     profilerEvtMax
 };
 
-//
-// Caller-maintained record to measure throughput events.
-//
-struct ProfilerThroughputEventRecord
-{
-    long long       beginClock;
-    int             eventId;
-};
 
 //
 // Initialize all resources to enable profiling.
 // profilerDir: Directory where the profiler logs will be saved. nullptr for default location.
 // customEventBufferBytes: Bytes to allocate for the custom event buffer.
 // logSuffix: Suffix string to append to log files.
+// syncGpu: Wait for GPU to complete processing for each profiling event.
 //
-void PERF_PROFILER_API ProfilerInit(const char* profilerDir, const unsigned long long customEventBufferBytes, const char* logSuffix);
+void PERF_PROFILER_API ProfilerInit(const char* profilerDir, const unsigned long long customEventBufferBytes,
+    const char* logSuffix, const bool syncGpu);
+
 
 //
 // Enable/disable profiling.
@@ -96,34 +98,35 @@ void PERF_PROFILER_API ProfilerInit(const char* profilerDir, const unsigned long
 //
 void PERF_PROFILER_API ProfilerEnable(bool enable);
 
-//
-// Measure time for either a fixed or a custom event.
-// The *Begin call returns a stateId that is passed to ProfilerTimeEnd().
-// If the fixed event does not need to be recorded, call ProfilerTimeCancel() before ProfilerTimeEnd().
-//
-unsigned long long PERF_PROFILER_API ProfilerTimeBegin(const int eventId);
-void PERF_PROFILER_API ProfilerTimeEnd(const unsigned long long stateId);
-void PERF_PROFILER_API ProfilerTimeCancel(unsigned long long* stateId);
 
-unsigned long long PERF_PROFILER_API ProfilerTimeBegin(const char* eventDescription);
+//
+// Measure either a fixed or custom event time.
+// ProfilerTimeBegin() returns a stateId that is passed to ProfilerTimeEnd().
+// If ProfilerTimeEnd() is not called, the event is not recorded.
+//
+long long PERF_PROFILER_API ProfilerTimeBegin();
+void PERF_PROFILER_API ProfilerTimeEnd(const long long stateId, const int eventId);
+void PERF_PROFILER_API ProfilerTimeEnd(const long long stateId, const char* eventDescription);
 
+//
+// Conditionally sync the GPU if the syncGPU flag is set.
+//
+void PERF_PROFILER_API ProfilerSyncGpu();
 
 //
 // CUDA kernel profiling.
-// The cuda event calls must be called around the kernel, and the total kernel time provided
-// in deltaSeconds.
+// CUDA kernels are profiled using a single call to this function.
 //
-unsigned long long PERF_PROFILER_API ProfilerCudaTimeBegin(const char* eventDescription);
-void PERF_PROFILER_API ProfilerCudaTimeEnd(const float deltaSeconds, const unsigned long long stateId);
+void PERF_PROFILER_API ProfilerCudaTimeEnd(const float deltaSeconds, const char* eventDescription);
 
 
 //
-// Measure throughput given a bytes in an *Begin/*End block.
-// The ThroughputEventRecord is meaintained by the caller.
-// If ProfilerThroughputEnd is not called, the event is not recorded.
+// Measure throughput given the number of bytes.
+// ProfilerThroughputBegin() returns a stateId that is passed to ProfilerThroughputEnd().
+// If ProfilerThroughputEnd() is not called, the event is not recorded.
 //
-void PERF_PROFILER_API ProfilerThroughputBegin(const int eventId, ProfilerThroughputEventRecord* profilerThroughputEventRecord);
-void PERF_PROFILER_API ProfilerThroughputEnd(const long long bytes, ProfilerThroughputEventRecord* profilerThroughputEventRecord);
+long long PERF_PROFILER_API ProfilerThroughputBegin();
+void PERF_PROFILER_API ProfilerThroughputEnd(const long long stateId, const int eventId, const long long bytes);
 
 //
 // Generate reports and release all resources.
@@ -136,9 +139,9 @@ void PERF_PROFILER_API ProfilerClose();
 //
 struct ProfilerContext
 {
-    void Init(const char* profilerDir = nullptr, const unsigned long long customEventBufferBytes = (32 * 1024 * 1024), const char* logSuffix = "")
+    void Init(const char* profilerDir = nullptr, const unsigned long long customEventBufferBytes = (32 * 1024 * 1024), const char* logSuffix = "", const bool syncGpu = false)
     {
-        ProfilerInit(profilerDir, customEventBufferBytes, logSuffix);
+        ProfilerInit(profilerDir, customEventBufferBytes, logSuffix, syncGpu);
     }
 
     ~ProfilerContext()
@@ -151,25 +154,36 @@ struct ProfilerContext
 //
 // Scoped time profiling.
 //
-class ScopeProfile
+struct ScopeProfile
 {
-    unsigned long long m_stateId;
-
-public:
     ScopeProfile(int eventId)
     {
-        m_stateId = ProfilerTimeBegin(eventId);
+        m_eventId = eventId;
+        m_stateId = ProfilerTimeBegin();
     }
 
     ScopeProfile(const char* description)
     {
-        m_stateId = ProfilerTimeBegin(description);
+        m_description = (char*)description;
+        m_stateId = ProfilerTimeBegin();
     }
 
     ~ScopeProfile()
     {
-        ProfilerTimeEnd(m_stateId);
+        if (m_description)
+        {
+            ProfilerTimeEnd(m_stateId, m_description);
+        }
+        else
+        {
+            ProfilerTimeEnd(m_stateId, m_eventId);
+        }
     }
+
+private:
+    unsigned long long  m_stateId;
+    int                 m_eventId;
+    char*               m_description = nullptr;
 };
 
 #define PROFILE_SCOPE(eventId)      ScopeProfile __sp##eventId(eventId);
@@ -180,22 +194,24 @@ public:
 //
 // Scoped throughput profiling.
 //
-class ScopeThroughput
+struct ScopeThroughput
 {
-    ProfilerThroughputEventRecord   m_throughputEventRecord;
-    long long                       m_bytes;
-
-public:
     ScopeThroughput(int eventId, long long bytes)
     {
         m_bytes = bytes;
-        ProfilerThroughputBegin(eventId, &m_throughputEventRecord);
+        m_eventId = eventId;
+        m_stateId = ProfilerThroughputBegin();
     }
 
     ~ScopeThroughput()
     {
-        ProfilerThroughputEnd(m_bytes, &m_throughputEventRecord);
+        ProfilerThroughputEnd(m_stateId, m_eventId, m_bytes);
     }
+
+private:
+    unsigned long long              m_stateId;
+    int                             m_eventId;
+    long long                       m_bytes;
 };
 
 #define THROUGHPUT_SCOPE(eventId, bytes)    ScopeThroughput __st##eventId(eventId, bytes);
