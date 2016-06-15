@@ -12,6 +12,7 @@
 #include "latticearchive.h" // for reading HTK phoneme lattices (MMI training)
 #include "minibatchsourcehelpers.h"
 #include "minibatchiterator.h"
+#include <random>
 
 namespace msra { namespace dbn {
 
@@ -35,6 +36,7 @@ class minibatchutterancesourcemulti : public minibatchsource
     // lattice reader
     // const std::vector<unique_ptr<latticesource>> &lattices;
     const latticesource &lattices;
+    std::mt19937_64 m_rng;
 
     // std::vector<latticesource> lattices;
     // word-level transcripts (for MMI mode when adding best path to lattices)
@@ -694,49 +696,6 @@ public:
     }
 
 private:
-    // shuffle a vector into random order by randomly swapping elements
-
-    template <typename VECTOR>
-    static void randomshuffle(VECTOR &v, size_t randomseed)
-    {
-        if (v.size() > RAND_MAX * (size_t) RAND_MAX)
-            throw std::runtime_error("randomshuffle: too large set: need to change to different random generator!");
-        srand((unsigned int) randomseed);
-        foreach_index (i, v)
-        {
-            // pick a random location
-            const size_t irand = Microsoft::MSR::CNTK::rand(0, v.size());
-
-            // swap element i with it
-            if (irand == (size_t) i)
-                continue;
-            ::swap(v[i], v[irand]);
-        }
-    }
-#if 0
-    template<typename VECTOR> static void randomshuffle(std::vector<VECTOR &> v, size_t randomseed)
-    {
-        foreach_index(j, v)
-        {
-           if (v[j].size() > RAND_MAX * (size_t) RAND_MAX)
-            throw std::runtime_error ("randomshuffle: too large set: need to change to different random generator!");
-        }
-        srand ((unsigned int) randomseed);
-
-        foreach_index (i, v[0])
-        {
-           // pick a random location
-            const size_t irand = msra::dbn::rand (0, v[0].size());
-
-            foreach_index(j, v){
-            // swap element i with it
-                if (irand == (size_t) i)
-                    continue;
-                ::swap (v[j][i], v[j][irand]);
-            }
-        }
-    }
-#endif // 0
     static void checkoverflow(size_t fieldval, size_t targetval, const char *fieldname)
     {
         if (fieldval != targetval)
@@ -893,7 +852,7 @@ private:
             // check we got those setup right
 
             // we now randomly shuffle randomizedutterancerefs[pos], while considering the constraints of what chunk range needs to be in memory
-            srand((unsigned int) sweep + 1);
+            m_rng.seed((unsigned long)sweep);
             for (size_t i = 0; i < randomizedutterancerefs.size(); i++)
             {
                 // get valid randomization range, expressed in chunks
@@ -905,11 +864,12 @@ private:
                 const size_t posbegin = randomizedchunks[0][windowbegin].utteranceposbegin;
                 const size_t posend = randomizedchunks[0][windowend - 1].utteranceposend();
 
+                std::uniform_int_distribution<size_t> distribution(posbegin, std::max(posbegin, posend - 1));
                 // randomization range for this utterance position is [posbegin, posend)
                 for (;;)
                 {
                     // pick a random location
-                    const size_t j = Microsoft::MSR::CNTK::rand(posbegin, posend); // a random number within the window
+                    const size_t j = distribution(m_rng); // a random number within the window
                     if (i == j)
                         break; // the random gods say "this one points to its original position"... nothing wrong about that, but better not try to swap
 
@@ -964,7 +924,7 @@ private:
             // This sets up the following members:
             //  - randomizedframerefs
 
-            srand((unsigned int) sweep + 1);
+            m_rng.seed((unsigned long) sweep);
             // An original timeline is established by the randomized chunks, denoted by 't'.
             // Returned frames are indexed by frame position j = (globalt - sweept), which have an associated underlying 't'.
             // It is guaranteed that uttterance frame position j maps to an underlying frame within the corresponding chunk window.
@@ -1016,10 +976,10 @@ private:
                 const size_t postbegin = randomizedchunks[0][poswindowbegin].globalts - sweepts;
                 const size_t postend = randomizedchunks[0][poswindowend - 1].globalte() - sweepts;
                 // The position that this frame gets randomized to must be guaranteed to belong to a chunk within [postbegin, postend).
-
+                std::uniform_int_distribution<size_t> distribution(postbegin, std::max(postbegin, postend - 1));
                 for (;;) // (randomization retry loop)
                 {
-                    size_t tswap = Microsoft::MSR::CNTK::rand(postbegin, postend); // random frame position within allowed range
+                    size_t tswap = distribution(m_rng); // random frame position within allowed range
                     // We want to swap 't' to 'tswap' and 'tswap' to 't'.
                     //  - Both may have been swapped before.
                     //  - Both must stay within the randomization window of their respective position.
@@ -1037,9 +997,6 @@ private:
                         continue;
                     // admissible--swap the two
                     ::swap(randomizedframerefs[t], randomizedframerefs[tswap]);
-#if 0
-                    break;
-#else // post-check  --so far did not trigger, can be removed
 
                     // do a post-check if we got it right  --we seem not to
                     if (isframepositionvalid(t, ttochunk) && isframepositionvalid(tswap, ttochunk))
@@ -1047,7 +1004,6 @@ private:
                     // not valid: swap them back and try again  --we actually discovered a bug in the code above
                     ::swap(randomizedframerefs[t], randomizedframerefs[tswap]);
                     fprintf(stderr, "lazyrandomization: BUGBUG --invalid swapping condition detected\n");
-#endif
                 }
             }
 

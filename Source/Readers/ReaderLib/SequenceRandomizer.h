@@ -11,6 +11,7 @@
 #include "DataDeserializer.h"
 #include "ChunkRandomizer.h"
 #include <deque>
+#include <random>
 
 namespace Microsoft { namespace MSR { namespace CNTK {
 
@@ -80,6 +81,7 @@ private:
     void MoveChunkCursor();
 
 private:
+    std::mt19937_64 m_rng;
 
     IDataDeserializerPtr m_deserializer;
 

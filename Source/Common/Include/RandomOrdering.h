@@ -11,18 +11,13 @@
 #include <stdio.h>
 #include <vector>
 #include <algorithm>
+#include <random>
 
 namespace Microsoft { namespace MSR { namespace CNTK {
 
 // ---------------------------------------------------------------------------
 // RandomOrdering -- class to help manage randomization of input data
 // ---------------------------------------------------------------------------
-
-static inline size_t rand(const size_t begin, const size_t end)
-{
-    const size_t randno = ::rand() * RAND_MAX + ::rand(); // BUGBUG: still only covers 32-bit range
-    return begin + randno % (end - begin);
-}
 
 class RandomOrdering // note: NOT thread-safe at all
 {
@@ -34,6 +29,8 @@ class RandomOrdering // note: NOT thread-safe at all
     size_t currentseed;             // seed for current sequence
     size_t randomizationrange;      // t - randomizationrange/2 <= t' < t + randomizationrange/2 (we support this to enable swapping)
                                     // special values (randomizeDisable)
+    std::mt19937_64 m_gen;
+
     void Invalidate()
     {
         currentseed = (size_t) -1;
@@ -77,7 +74,8 @@ public:
 
             if (map.size() > RAND_MAX * (size_t) RAND_MAX)
                 RuntimeError("RandomOrdering: too large training set: need to change to different random generator!");
-            srand((unsigned int) seed);
+
+            m_gen.seed((unsigned long)seed);
             size_t retries = 0;
             foreach_index (t, map)
             {
@@ -89,7 +87,10 @@ public:
                     const size_t tbegin = max((size_t) t, randomizationrange / 2) - randomizationrange / 2; // range of window  --TODO: use bounds() function above
                     const size_t tend = min(t + randomizationrange / 2, map.size());
                     assert(tend >= tbegin);                  // (guard against potential numeric-wraparound bug)
-                    const size_t trand = rand(tbegin, tend); // random number within windows
+
+                    std::uniform_int_distribution<size_t> dist(tbegin, std::max(tbegin, tend - 1));
+                    const size_t trand = dist(m_gen); // random number within windows
+
                     assert((size_t) t <= trand + randomizationrange / 2 && trand < (size_t) t + randomizationrange / 2);
                     // if range condition is fulfilled then swap
                     if (trand <= map[t] + randomizationrange / 2 && map[t] < trand + randomizationrange / 2 && (size_t) t <= map[trand] + randomizationrange / 2 && map[trand] < (size_t) t + randomizationrange / 2)
