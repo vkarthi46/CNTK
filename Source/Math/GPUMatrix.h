@@ -720,14 +720,14 @@ struct AsyncGPUProfiler
             }
         });
 
-/*#ifdef _WIN32
+#ifdef _WIN32
         SetThreadPriority((HANDLE)m_workerThread->native_handle(), THREAD_PRIORITY_TIME_CRITICAL);
 #else
         int policy = SCHED_FIFO;
         struct sched_param param;
         param.sched_priority = sched_get_priority_max(policy);
         pthread_setschedparam(m_workerThread->native_handle(), policy, &param);
-#endif*/
+#endif
     }
 
     ~AsyncGPUProfiler()
