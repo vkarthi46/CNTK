@@ -64,13 +64,13 @@ DNN=[
     roi = ROIPooling(rois, conv2, 7, 7)
     
     ce = CrossEntropyWithSoftmax(labels, ol)
-    err = ErrorPrediction(labels, ol)
+    errs = ErrorPrediction(labels, ol)
 
     # Special Nodes
     FeatureNodes = (features)
     LabelNodes = (labels)
     CriterionNodes = (ce)
-    EvalNodes = (err, roi)
+    EvalNodes = (errs, roi)
     OutputNodes = (ol)
 ]
 
