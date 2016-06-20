@@ -516,7 +516,7 @@ int wmainWithBS(int argc, wchar_t* argv[]) // called from wmain which is a wrapp
     ProfilerContext profilerContext;
     SetupProfiling<ScriptableObjects::IConfigRecord>(profilerContext, config, paralleltrain ? (int)mpi->CurrentNodeRank() : 0);
 #ifndef CPUONLY
-    //AsyncGPUProfiler gpuProfiler;
+    AsyncGPUProfiler gpuProfiler;
 #endif
 
     // execute the actions
@@ -661,7 +661,7 @@ int wmainOldCNTKConfig(int argc, wchar_t* argv[])
     ProfilerContext profilerContext;
     SetupProfiling<ConfigParameters>(profilerContext, config, paralleltrain ? (int)mpi->CurrentNodeRank() : 0);
 #ifndef CPUONLY
-    //AsyncGPUProfiler gpuProfiler;
+    AsyncGPUProfiler gpuProfiler;
 #endif
 
     // run commands
