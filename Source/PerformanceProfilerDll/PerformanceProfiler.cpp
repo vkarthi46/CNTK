@@ -715,13 +715,12 @@ void ProfilerGenerateDetailFile(const char* fileName)
         char* descriptionStr = eventPtr;
         eventPtr += strlen(descriptionStr) + 1;
 
-        CustomEventRecord eventRecord;
-        memcpy(&eventRecord, eventPtr, sizeof(CustomEventRecord));
+        CustomEventRecord* eventRecord = (CustomEventRecord*)eventPtr;
         eventPtr += sizeof(CustomEventRecord);
 
-        fprintfOrDie(f, "\"%s\",%u,%.8f,%.8f\n", descriptionStr, eventRecord.threadId, 
-            1000.0 * ((double)eventRecord.beginClock / (double)g_profilerState.clockFrequency),
-            1000.0 * ((double)eventRecord.endClock / (double)g_profilerState.clockFrequency));
+        fprintfOrDie(f, "\"%s\",%u,%.8f,%.8f\n", descriptionStr, eventRecord->threadId, 
+            1000.0 * ((double)eventRecord->beginClock / (double)g_profilerState.clockFrequency),
+            1000.0 * ((double)eventRecord->endClock / (double)g_profilerState.clockFrequency));
     }
 
     fclose(f);

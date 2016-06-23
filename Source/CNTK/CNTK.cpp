@@ -74,7 +74,7 @@ void TestCn(const ConfigParameters& config);
 template <typename ConfigParamType>
 void SetupProfiling(ProfilerContext& profilerContext, const ConfigParamType& config, int nodeRank)
 {
-    if (config(L"profilerEnabled", false))
+    if (config(L"profilerEnabled", true))
     {
         profilerContext.Init(config(L"profilerDirectory", "./profiler").c_str(),
                              config(L"profilerBufferSize", static_cast<uint64_t>(32ull * 1024ull * 1024ull)),

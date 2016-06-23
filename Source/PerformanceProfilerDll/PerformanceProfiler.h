@@ -172,7 +172,7 @@ struct ScopeProfile
     {
         if (m_description)
         {
-            ProfilerTimeEnd(m_stateId, m_description);
+            //ProfilerTimeEnd(m_stateId, m_description);
         }
         else
         {
