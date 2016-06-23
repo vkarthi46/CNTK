@@ -274,6 +274,11 @@ void ProfilerTimeEndInt(const int eventId, const long long beginClock, const lon
 
 void ProfilerTimeEndInt(const char* eventDescription, const long long beginClock, const long long endClock)
 {
+    UNUSED(eventDescription);
+    UNUSED(beginClock);
+    UNUSED(endClock);
+    return;
+
     if (!g_profilerState.init || !g_profilerState.enabled) return;
 
     LOCK

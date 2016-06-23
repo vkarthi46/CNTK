@@ -159,6 +159,7 @@ struct ScopeProfile
     ScopeProfile(int eventId)
     {
         m_eventId = eventId;
+        m_description = nullptr;
         m_stateId = ProfilerTimeBegin();
     }
 
@@ -172,7 +173,7 @@ struct ScopeProfile
     {
         if (m_description)
         {
-            //ProfilerTimeEnd(m_stateId, m_description);
+            ProfilerTimeEnd(m_stateId, m_description);
         }
         else
         {
@@ -183,7 +184,7 @@ struct ScopeProfile
 private:
     unsigned long long  m_stateId;
     int                 m_eventId;
-    char*               m_description = nullptr;
+    char*               m_description;
 };
 
 #define PROFILE_SCOPE(eventId)      ScopeProfile __sp##eventId(eventId);
