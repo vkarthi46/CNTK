@@ -358,7 +358,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
         // Awlays skip the first epoch for profiling to avoid startup behavior
         if (i > startEpoch) ProfilerEnable(true);
         PROFILE_SCOPE(profilerEvtMainEpochExt);
-        //auto profilerState = ProfilerTimeBegin();
+        auto profilerState = ProfilerTimeBegin();
 
         // Synchronize all ranks before proceeding to ensure that
         // rank 0 has finished writing the previous model file
@@ -367,8 +367,8 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
             m_mpi->WaitAll();
         }
 
-        //ProfilerTimeEnd(profilerState, profilerEvtMainEpochWait1);
-        //profilerState = ProfilerTimeBegin();
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochWait1);
+        profilerState = ProfilerTimeBegin();
 
         Timer timer;
         timer.Start();
@@ -470,7 +470,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
         EpochCriterion epochCriterion; // criterion values are returned in this
         std::vector<EpochCriterion> epochEvalErrors(evaluationNodes.size());
 
-        //ProfilerTimeEnd(profilerState, profilerEvtMainEpochAdj1);
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochAdj1);
 
         TrainOneEpoch(net,
                       refNet,
@@ -489,7 +489,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
                       epochCriterion, epochEvalErrors,
                       cudaProfilerTimer);
 
-        //profilerState = ProfilerTimeBegin();
+        profilerState = ProfilerTimeBegin();
 
         totalTrainingSamplesSeen += epochCriterion.second; // aggregate #training samples, for logging purposes only
 
@@ -669,8 +669,8 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
             epochsNotCountedInAvgCriterion = 0;
         }
 
-        //ProfilerTimeEnd(profilerState, profilerEvtMainEpochAdj2);
-        //profilerState = ProfilerTimeBegin();
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochAdj2);
+        profilerState = ProfilerTimeBegin();
 
         // Synchronize all ranks before proceeding to ensure that
         // nobody tries reading the checkpoint file at the same time
@@ -680,8 +680,8 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
             m_mpi->WaitAll();
         }
 
-        //ProfilerTimeEnd(profilerState, profilerEvtMainEpochWait2);
-        //profilerState = ProfilerTimeBegin();
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochWait2);
+        profilerState = ProfilerTimeBegin();
 
         // persist model and check-point info
         if ((m_mpi == nullptr) || m_mpi->IsMainNode())
@@ -717,7 +717,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
                       learnRatePerSample);
         }
 
-        //ProfilerTimeEnd(profilerState, profilerEvtMainEpochCheckpoint);
+        ProfilerTimeEnd(profilerState, profilerEvtMainEpochCheckpoint);
     }
     // --- END OF MAIN EPOCH LOOP
 
