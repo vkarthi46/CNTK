@@ -1,0 +1,152 @@
+RootDir = "."
+
+ConfigDir = "$RootDir$"
+DataDir = "$RootDir$"
+OutputDir = "$RootDir$/Output"
+ModelDir = "$OutputDir$/Models"
+
+ndlMacros="$ConfigDir$/Macros.ndl"
+
+precision="float"
+deviceId="Auto"
+
+command=AddROILayer:Write
+
+parallelTrain="false"
+
+#stderr="$OutputDir$/AlexNet"
+traceLevel=1
+numMBsToShowResult=5 #500
+
+AddROILayer=[    
+    action="edit"
+    CurModel="$ConfigDir$/AlexNet.89"
+    NewModel="$ConfigDir$/AlexNet.ROI"
+    editPath="$ConfigDir$/AddROILayer.mel"
+]
+
+Test=[
+    action="test"
+    modelPath="$ConfigDir$/AlexNet.ROI"
+    # Set minibatch size for testing.
+    minibatchSize=32
+   
+    reader=[
+        randomize = false
+	verbosity = 2
+	deserializers = (
+	[
+	    type = "CNTKTextFormatDeserializer"
+	    module = "CNTKTextFormatReader"
+	    file = "$ConfigDir$/test_voc500rois.txt"
+	    input = [
+	        rois = [
+		    dim = 40
+		    format = "dense"
+		]
+	    ]
+	]:
+	[
+	    type = "ImageDeserializer"
+	    module = "ImageReader"
+	    file="$ConfigDir$/test_voc500.txt"
+	    input = [
+	        features = [
+	        transforms = (
+                    [
+                        type = "Crop"
+                        # Possible values: Center, Random. Default: Center
+                        cropType = "Random"
+                        # Crop scale ratio.
+                        cropRatio = 0.875
+                        # Crop scale ratio jitter type
+                        jitterType = "uniRatio"
+                    ]:[
+                        type = "Scale"
+                        width = 224
+                        height = 224
+                        channels = 3
+                        # Interpolation to use when scaling image to width x height size.
+                        interpolations = "linear"
+                    ]:[
+                        type = "Mean"
+                        # Stores mean values for each pixel in OpenCV matrix XML format.
+                        meanFile = "$ConfigDir$/ImageNet1K_mean.xml"
+                    ]:[
+                        # Changes the image layout from HWC to CHW
+                        type = "Transpose"
+                    ]
+                )
+		]
+		labels=[
+            	    labelDim=1000
+		]
+	    ]
+        ]
+	)
+    ]
+]
+
+Write=[
+    action="write"
+    modelPath="$ConfigDir$/AlexNet.ROI"
+    # Set minibatch size for testing.
+    minibatchSize=32
+    outputPath="chunk4"
+    reader=[
+        randomize = false
+	verbosity = 2
+	deserializers = (
+	[
+	    type = "CNTKTextFormatDeserializer"
+	    module = "CNTKTextFormatReader"
+	    file = "$ConfigDir$/test_voc500rois.txt"
+	    input = [
+	        rois = [
+		    dim = 40
+		    format = "dense"
+		]
+	    ]
+	]:
+	[
+	    type = "ImageDeserializer"
+	    module = "ImageReader"
+	    file="$ConfigDir$/test_voc500.txt"
+	    input = [
+	        features = [
+	        transforms = (
+                    [
+                        type = "Crop"
+                        # Possible values: Center, Random. Default: Center
+                        cropType = "Random"
+                        # Crop scale ratio.
+                        cropRatio = 0.875
+                        # Crop scale ratio jitter type
+                        jitterType = "uniRatio"
+                    ]:[
+                        type = "Scale"
+                        width = 224
+                        height = 224
+                        channels = 3
+                        # Interpolation to use when scaling image to width x height size.
+                        interpolations = "linear"
+                    ]:[
+                        type = "Mean"
+                        # Stores mean values for each pixel in OpenCV matrix XML format.
+                        meanFile = "$ConfigDir$/ImageNet1K_mean.xml"
+                    ]:[
+                        # Changes the image layout from HWC to CHW
+                        type = "Transpose"
+                    ]
+                )
+		]
+		labels=[
+            	    labelDim=1000
+		]
+	    ]
+        ]
+	)
+    ]
+
+    outputNodeNames = (roi, rshp, h2.y)
+]

@@ -1,0 +1,17 @@
+m1 = LoadModel("$curModel$", format="cntk")
+SetDefaultModel(m1)
+
+# number of ROIs per image
+roiDim = 40
+rois = Input(roiDim, tag=feature)
+
+# input rois and last conv layer
+roi = ROIPooling(rois, conv5.y, 6, 6)
+
+# use LegacyReshape to expand batch dimension to batch_size*num_rois_per_image
+rshp = Reshape(roi, 9216, imageWidth=6, imageHeight=6, imageChannels=256, imageLayout="CHW")
+
+# set the input of the first fully-connected layer to be this new batch
+SetInput(h1.t, 1, rshp)
+
+SaveModel(m1, "$newModel$", format="cntk")
