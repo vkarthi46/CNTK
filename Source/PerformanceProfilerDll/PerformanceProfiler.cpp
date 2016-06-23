@@ -214,7 +214,6 @@ void PERF_PROFILER_API ProfilerInit(const char* profilerDir, const unsigned long
     memset(&g_profilerState, 0, sizeof(g_profilerState));
 
     LockInit();
-    LOCK
 
     if (profilerDir)
     {
@@ -257,12 +256,6 @@ void PERF_PROFILER_API ProfilerEnable(bool enable)
 //
 void ProfilerTimeEndInt(const int eventId, const long long beginClock, const long long endClock)
 {
-    UNUSED(eventId);
-    UNUSED(beginClock);
-    UNUSED(endClock);
-    return;
-
-
     if (!g_profilerState.init || !g_profilerState.enabled) return;
 
     LOCK
@@ -282,11 +275,6 @@ void ProfilerTimeEndInt(const int eventId, const long long beginClock, const lon
 
 void ProfilerTimeEndInt(const char* eventDescription, const long long beginClock, const long long endClock)
 {
-    UNUSED(eventDescription);
-    UNUSED(beginClock);
-    UNUSED(endClock);
-    return;
-
     if (!g_profilerState.init || !g_profilerState.enabled) return;
 
     LOCK
