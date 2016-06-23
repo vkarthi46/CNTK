@@ -214,6 +214,8 @@ void PERF_PROFILER_API ProfilerInit(const char* profilerDir, const unsigned long
     memset(&g_profilerState, 0, sizeof(g_profilerState));
 
     LockInit();
+    LOCK
+
     if (profilerDir)
     {
         strncpy(g_profilerState.profilerDir, profilerDir, sizeof(g_profilerState.profilerDir) - 1);
