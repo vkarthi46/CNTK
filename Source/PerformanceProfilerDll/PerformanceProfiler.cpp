@@ -255,6 +255,12 @@ void PERF_PROFILER_API ProfilerEnable(bool enable)
 //
 void ProfilerTimeEndInt(const int eventId, const long long beginClock, const long long endClock)
 {
+    UNUSED(eventId);
+    UNUSED(beginClock);
+    UNUSED(endClock);
+    return;
+
+
     if (!g_profilerState.init || !g_profilerState.enabled) return;
 
     LOCK
