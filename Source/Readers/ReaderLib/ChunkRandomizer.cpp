@@ -49,7 +49,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         randomizedChunkIndices.reserve(m_originalChunks.size());
         for (ChunkIdType i = 0; i < m_originalChunks.size(); i++)
         {
-            randomizedChunkIndices.push_back(i);
+            randomizedChunkIndices.push_back(m_originalChunks[i]->m_id);
         }
 
         if (m_legacy)
@@ -58,8 +58,10 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         }
         else
         {
-            std::mt19937 m_rng(static_cast<int>(seed));
-            std::shuffle(randomizedChunkIndices.begin(), randomizedChunkIndices.end(), m_rng);
+            //std::mt19937 m_rng(static_cast<int>(seed));
+            //std::shuffle(randomizedChunkIndices.begin(), randomizedChunkIndices.end(), m_rng);
+			std::srand(std::random_device()());
+			std::random_shuffle(randomizedChunkIndices.begin(), randomizedChunkIndices.end());
         }
 
         // Place randomized chunks on the timeline
