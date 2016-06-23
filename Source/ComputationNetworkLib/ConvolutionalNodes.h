@@ -481,6 +481,7 @@ public:
 		Matrix<ElemType> inputSlice = Input(1)->ValueFor(fr);
 		Matrix<ElemType> ROIs = Input(0)->ValueFor(fr);
 
+
 		// our output slice for this minibatch.
 		// todo: see shape comment in validate.
 		Matrix<ElemType> outputSlice = ValueFor(fr);
@@ -490,8 +491,6 @@ public:
 		// outslice should be e.g. rois_per_image*7*7*32 x 32
 		// can read ROIs contiguously.
 		
-
-
 
 		// input slice is w*h*c x bsz; cols are images.
 		// rois is rois_per_image*4 x bsz; cols are rois for different images.
@@ -527,7 +526,7 @@ public:
 				// scaled ROI numbers (relative to original image size)
 				// roi points are doubles that represent location relative to image
 				double sc_x = rois.GetValue(base, 0);
-				double sc_y = rois.GetValue(base + 1, 0);
+				double sc_y = rois.GetValue(base + 1, 0); 
 				double sc_w = rois.GetValue(base + 2, 0);
 				double sc_h = rois.GetValue(base + 3, 0);
 
@@ -588,20 +587,20 @@ public:
 					}
 				}
 			}
-
-			/*// for debugging. output image slice & roi slice for channel 0.
+			/*
+			// for debugging. output image slice & roi slice for channel 0.
 			if (img_idx == 0) {
-				Matrix<ElemType> imgMat = Matrix<ElemType>::Zeros(14, 14, m_deviceId);
-				for (int w = 0; w < 14; w++) {
-					for (int h = 0; h < 14; h++) {
-						imgMat(w, h) = img((h + w * 14) * 32, 0);
+				Matrix<ElemType> imgMat = Matrix<ElemType>::Zeros(input_w, input_h, m_deviceId);
+				for (int w = 0; w < input_w; w++) {
+					for (int h = 0; h < input_h; h++) {
+						imgMat(w, h) = img((h + w * input_h) * num_channels, 0);
 					}
 				}
 
-				Matrix<ElemType> roiMat = Matrix<ElemType>::Zeros(7, 7, m_deviceId);
-				for (int w = 0; w < 7; w++) {
-					for (int h = 0; h < 7; h++) {
-						roiMat(w, h) = outputSlice((h + w * 7) * 32, 0);
+				Matrix<ElemType> roiMat = Matrix<ElemType>::Zeros(m_outW, m_outH, m_deviceId);
+				for (int w = 0; w < m_outW; w++) {
+					for (int h = 0; h < m_outH; h++) {
+						roiMat(w, h) = outputSlice((h + w * m_outH) * num_channels, 0);
 					}
 				}
 
