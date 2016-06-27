@@ -44,11 +44,18 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 //
 // Fixed profiler event descriptions
 //
-enum ProfilerEvtType
+enum FixedEventType
 {
     profilerEvtTime = 0,
     profilerEvtThroughput,
     profilerEvtSeparator
+};
+
+struct FixedEventDesc
+{
+	char			eventDescription[64];
+	FixedEventType	eventType;
+	bool			syncGpu;
 };
 
 static const char* c_profilerEvtDesc[profilerEvtMax] = {  
@@ -91,7 +98,7 @@ static const char* c_profilerEvtDesc[profilerEvtMax] = {
     "ImageReader Throughput"
 };
 
-static const ProfilerEvtType c_profilerEvtType[profilerEvtMax] = {
+static const FixedEventType c_profilerEvtType[profilerEvtMax] = {
     profilerEvtSeparator,
     profilerEvtSeparator,
     profilerEvtTime,
@@ -327,6 +334,7 @@ void PERF_PROFILER_API ProfilerTimeEnd(const long long stateId, const char* even
 void PERF_PROFILER_API ProfilerSyncGpu()
 {
 #ifndef CPUONLY
+	if (!g_profilerState.init || !g_profilerState.enabled) return;
     if (g_profilerState.syncGpu) cudaDeviceSynchronize();
 #endif
 }
