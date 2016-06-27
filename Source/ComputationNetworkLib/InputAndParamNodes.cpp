@@ -74,7 +74,7 @@ LearnableParameter<ElemType>::LearnableParameter(const ScriptableObjects::IConfi
 // initialize with random numbers
 // if 'initOnCPUOnly' then always init on CPU, making initialization consistent across both (for testing)
 template <class ElemType>
-/*virtual*/ void LearnableParameter<ElemType>::InitRandom(const bool uniformInit,
+void LearnableParameter<ElemType>::InitRandom(const bool uniformInit,
                                                 const unsigned long randomSeed,
                                                 const ElemType initValueScale,
                                                 bool initOnCPUOnly)
@@ -162,6 +162,7 @@ void LearnableParameter<ElemType>::InitFromArray(const std::vector<ElemType>& ar
     VerifyDataSize(Value());      // sanity check
 }
 
+// TODO: Move this error check there, since this is called only from one place.
 template <class ElemType>
 void LearnableParameter<ElemType>::ReviseFromFile(const std::wstring& reviseFromFilePath)
 {
@@ -299,36 +300,7 @@ template <class ElemType>
     PrintNodeValuesToFile(printValues, printMetadata, fstream);
 }
 
-//template class LearnableParameter<short>;
 template class LearnableParameter<float>;
 template class LearnableParameter<double>;
-
-template <class ElemType, class QuantizedType>
-void LearnableParameterQuantized<ElemType, QuantizedType>::InitFromFile(const std::wstring& initFromFilePath) /*override*/
-{
-    LogicError("To be implemented");
-}
-
-template <class ElemType, class QuantizedType>
-void LearnableParameterQuantized<ElemType, QuantizedType>::Save(File& fstream) const /*override*/
-{
-    LogicError("To be implemented");
-}
-
-template <class ElemType, class QuantizedType>
-void LearnableParameterQuantized<ElemType, QuantizedType>::Load(File& fstream, size_t modelVersion) /*override*/
-{
-    LogicError("To be implemented");
-}
-
-template <class ElemType, class QuantizedType>
-void LearnableParameterQuantized<ElemType, QuantizedType>::Validate(bool isFinalValidationPass) /*override*/
-{
-    LogicError("To be implemented");
-}
-
-template class LearnableParameterQuantized<float, short>;
-template class LearnableParameterQuantized<double, short>;
-
 
 }}}
