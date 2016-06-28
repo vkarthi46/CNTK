@@ -32,21 +32,13 @@ enum ProfilerEvents
     profilerSepMainThread = 0,
     profilerSepSpace0,
 
-    profilerEvtMainEpochExt,
-    profilerEvtMainEpochWait1,
-    profilerEvtMainEpochAdj1,
-
-    profilerEvtMainEpochInt,
+    profilerEvtMainEpoch,
     profilerEvtMainMinibatch,
     profilerEvtMainGetMinibatch,
     profilerEvtMainFB,
     profilerEvtMainGradient,
     profilerEvtMainWeights,
     profilerEvtMainPost,
-
-    profilerEvtMainEpochAdj2,
-    profilerEvtMainEpochWait2,
-    profilerEvtMainEpochCheckpoint,
 
     // MPI/Gradient aggregation multithreaded events
     profilerSepSpace1,
@@ -109,7 +101,8 @@ void PERF_PROFILER_API ProfilerTimeEnd(const long long stateId, const int eventI
 void PERF_PROFILER_API ProfilerTimeEnd(const long long stateId, const char* eventDescription);
 
 //
-// Conditionally sync the GPU if the syncGPU flag is set.
+// Conditionally sync the GPU if the syncGPU flag is set. This only needs to be excplicitly
+// called for custom events.
 //
 void PERF_PROFILER_API ProfilerSyncGpu();
 

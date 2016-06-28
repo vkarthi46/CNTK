@@ -58,85 +58,46 @@ struct FixedEventDesc
 	bool			syncGpu;
 };
 
-static const char* c_profilerEvtDesc[profilerEvtMax] = {  
-    "Main Thread",
-    "",
-    "Epoch External",
-    "_Epoch Wait All Pre",
-    "_Epoch Adjust LR MB Pre",
-    "_Epoch Internal",
-    "__Minibatch Iteration",
-    "___Get Minibatch",
-    "___Forward + Backward",
-    "___Gradient Aggregation",
-    "___Weight Update",
-    "___Post Processing",
-    "_Epoch Adjust LR MB Post",
-    "_Epoch Wait All Post",
-    "_Epoch Save Checkpoint",
-    "",
-    "Gradient Aggregation Thread & MPI",
-    "",
-    "Gradient Aggregation (1b)",
-    "_Async Communcation 1",
-    "_Wait for Gradients",
-    "_Wait for Headers",
-    "_Async Communication 2",
-    "_Wait for Agg. Gradients",
-    "_Wait for Agg. Headers",
-    "-Wait for Completion",
-    "Gradient Aggregation (32b)",
-    "_Async Communication 1",
-    "_Wait for Headers",
-    "_Async Communication 2",
-    "_Wait for Gradients",
-    "_Wait for Completion",
-    "",
-    "Data Reader",
-    "",
-    "Read Minibatch Task",
-    "ImageReader Throughput"
+static const FixedEventDesc c_fixedEvtDesc[profilerEvtMax] = {
+    { "Main Thread", profilerEvtSeparator, false },                 // profilerSepMainThread
+    { "", profilerEvtSeparator, false },                            // profilerSepSpace0
+
+    { "Epoch", profilerEvtTime, false },                            // profilerEvtMainEpoch
+    { "_Minibatch Iteration", profilerEvtTime, false },             // profilerEvtMainMinibatch
+    { "__Get Minibatch", profilerEvtTime, true },                   // profilerEvtMainGetMinibatch
+    { "__Forward + Backward", profilerEvtTime, true },              // profilerEvtMainFB
+    { "__Gradient Aggregation", profilerEvtTime, true },            // profilerEvtMainGradient
+    { "__Weight Update", profilerEvtTime, true },                   // profilerEvtMainWeights
+    { "__Post Processing", profilerEvtTime, true },                 // profilerEvtMainPost
+
+    { "", profilerEvtSeparator, false },                            // profilerSepSpace1
+    { "Gradient Aggregation Thread & MPI", profilerEvtSeparator, false }, // profilerSepMPI
+    { "", profilerEvtSeparator, false },                            // profilerSepSpace2
+
+    { "Gradient Aggregation (1b)", profilerEvtTime, false },        // profilerEvtGradient1
+    { "_Async Communcation 1", profilerEvtTime, false },            // profilerEvtGradientAsyncComm11
+    { "_Wait for Gradients", profilerEvtTime, false },              // profilerEvtGradientWaitGradients1
+    { "_Wait for Headers", profilerEvtTime, false },                // profilerEvtGradientWaitHeaders1
+    { "_Async Communication 2", profilerEvtTime, false },           // profilerEvtGradientAsyncComm21
+    { "_Wait for Agg. Gradients", profilerEvtTime, false },         // profilerEvtGradientWaitAggGradients1
+    { "_Wait for Agg. Headers", profilerEvtTime, false },           // profilerEvtGradientWaitAggHeaders1
+    { "_Wait for Completion", profilerEvtTime, false },             // profilerEvtGradientWaitCompletion1
+
+    { "Gradient Aggregation (32b)", profilerEvtTime, false },       // profilerEvtGradient32
+    { "_Async Communication 1", profilerEvtTime, false },           // profilerEvtGradientAsyncComm132
+    { "_Wait for Headers", profilerEvtTime, false },                // profilerEvtGradientWaitHeaders32
+    { "_Async Communication 2", profilerEvtTime, false },           // profilerEvtGradientAsyncComm232
+    { "_Wait for Gradients", profilerEvtTime, false },              // profilerEvtGradientWaitGradients32
+    { "_Wait for Completion", profilerEvtTime, false },             // profilerEvtGradientWaitCompletion32
+
+    { "", profilerEvtSeparator, false },                            // profilerSepSpace3
+    { "Data Reader", profilerEvtSeparator, false },                 // profilerSepDataReader
+    { "", profilerEvtSeparator, false },                            // profilerSepSpace4
+
+    { "Read Minibatch Task", profilerEvtTime, false },              // profilerEvtReadMinibatch
+    { "ImageReader Throughput", profilerEvtThroughput, false },     // profilerEvtZipReaderThroughput
 };
 
-static const FixedEventType c_profilerEvtType[profilerEvtMax] = {
-    profilerEvtSeparator,
-    profilerEvtSeparator,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtSeparator,
-    profilerEvtSeparator,
-    profilerEvtSeparator,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtTime,
-    profilerEvtSeparator,
-    profilerEvtSeparator,
-    profilerEvtSeparator,
-    profilerEvtTime,
-    profilerEvtThroughput
-};
 
 struct FixedEventRecord
 {
@@ -316,9 +277,10 @@ long long PERF_PROFILER_API ProfilerTimeBegin()
 
 void PERF_PROFILER_API ProfilerTimeEnd(const long long stateId, const int eventId)
 {
+    if (c_fixedEvtDesc[eventId].syncGpu) ProfilerSyncGpu();
     long long endClock = GetClock();
     ProfilerTimeEndInt(eventId, stateId, endClock);
-    ProfilerTimeEndInt(c_profilerEvtDesc[eventId], stateId, endClock);
+    ProfilerTimeEndInt(c_fixedEvtDesc[eventId].eventDescription, stateId, endClock);
 }
 
 
@@ -329,7 +291,8 @@ void PERF_PROFILER_API ProfilerTimeEnd(const long long stateId, const char* even
 
 
 //
-// Conditionally sync the GPU if the syncGPU flag is set.
+// Conditionally sync the GPU if the syncGPU flag is set. This only needs to be excplicitly
+// called for custom events.
 //
 void PERF_PROFILER_API ProfilerSyncGpu()
 {
@@ -592,13 +555,13 @@ void ProfilerGenerateReport(const char* fileName, struct tm* timeInfo)
     {
         bool printLine = false;
 
-        switch (c_profilerEvtType[evtIdx])
+        switch (c_fixedEvtDesc[evtIdx].eventType)
         {
         case profilerEvtTime:
             if (g_profilerState.fixedEvents[evtIdx].cnt > 0)
             {
                 printLine = true;
-                fprintfOrDie(f, "%-26s: ", c_profilerEvtDesc[evtIdx]);
+                fprintfOrDie(f, "%-26s: ", c_fixedEvtDesc[evtIdx].eventDescription);
 
                 char str[32];
 
@@ -631,7 +594,7 @@ void ProfilerGenerateReport(const char* fileName, struct tm* timeInfo)
             if (g_profilerState.fixedEvents[evtIdx].cnt > 0)
             {
                 printLine = true;
-                fprintfOrDie(f, "%-26s: ", c_profilerEvtDesc[evtIdx]);
+                fprintfOrDie(f, "%-26s: ", c_fixedEvtDesc[evtIdx].eventDescription);
 
                 char str[32];
 
@@ -660,7 +623,7 @@ void ProfilerGenerateReport(const char* fileName, struct tm* timeInfo)
         
         case profilerEvtSeparator:
             printLine = true;
-            fprintfOrDie(f, "%s", c_profilerEvtDesc[evtIdx]);
+            fprintfOrDie(f, "%s", c_fixedEvtDesc[evtIdx].eventDescription);
             break;
         }
 
