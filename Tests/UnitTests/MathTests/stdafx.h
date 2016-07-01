@@ -17,5 +17,6 @@
 #include "targetver.h"
 #include <array>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_log.hpp>
 #include "constants.h"
 #include "fixtures.h"
