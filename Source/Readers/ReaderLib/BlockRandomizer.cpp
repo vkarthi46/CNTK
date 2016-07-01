@@ -336,8 +336,9 @@ ChunkIdType BlockRandomizer::GetChunkToPrefetch(const Iter& begin, const Iter& e
     ChunkIdType toBePrefetched = CHUNKID_MAX;
     while (current != end)
     {
-        if (m_chunks.find(current->m_chunkId) == m_chunks.end() &&
-            m_decimationMode == DecimationMode::chunk && current->m_chunkId % m_config.m_numberOfWorkers == m_config.m_workerRank)
+        if (m_chunks.find(current->m_original->m_id) == m_chunks.end() &&
+            m_decimationMode == DecimationMode::chunk && 
+            current->m_chunkId % m_config.m_numberOfWorkers == m_config.m_workerRank)
         {
             toBePrefetched = current->m_original->m_id;
             break;
