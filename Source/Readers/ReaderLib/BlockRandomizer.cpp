@@ -36,10 +36,11 @@ BlockRandomizer::BlockRandomizer(
       m_lastSeenChunkId(CHUNKID_MAX),
       m_chunkRandomizer(std::make_shared<ChunkRandomizer>(deserializer, randomizationRangeInSamples, useLegacyRandomization)),
       m_multithreadedGetNextSequences(multithreadedGetNextSequence),
-      m_prefetchedChunk(CHUNKID_MAX),
-      m_shouldPrefetch(shouldPrefetch)
+      m_prefetchedChunk(CHUNKID_MAX)
 {
     assert(deserializer != nullptr);
+
+    m_launchType = shouldPrefetch ? launch::async : launch::deferred;
 
     m_streams = m_deserializer->GetStreamDescriptions();
     m_sequenceRandomizer = std::make_shared<SequenceRandomizer>(verbosity, m_deserializer, m_chunkRandomizer);
@@ -223,6 +224,8 @@ void BlockRandomizer::Decimate(const std::vector<RandomizedSequenceDescription>&
             }
         }
     }
+    // TODO: This mode should go away. Decimation based on chunks only should be sufficient.
+    // Currently this mode is used only for image reader.
     else if (m_decimationMode == DecimationMode::sequence)
     {
         size_t strideBegin = all.size() * m_config.m_workerRank / m_config.m_numberOfWorkers;
@@ -329,6 +332,8 @@ void BlockRandomizer::RetrieveDataChunks()
                 window.back().m_chunkId);
 }
 
+// Identifies chunk id that should be prefetched.
+// TODO: DecimationMode::sequence is not supported because it should eventually go away.
 template<class Iter>
 ChunkIdType BlockRandomizer::GetChunkToPrefetch(const Iter& begin, const Iter& end)
 {
@@ -348,10 +353,11 @@ ChunkIdType BlockRandomizer::GetChunkToPrefetch(const Iter& begin, const Iter& e
     return toBePrefetched;
 }
 
+// Performs io prefetch of the specified chunk if needed.
 void BlockRandomizer::Prefetch(ChunkIdType chunkId)
 {
     // Start new prefetch if necessary.
-    if (m_shouldPrefetch && m_prefetchedChunk != chunkId && chunkId != CHUNKID_MAX)
+    if (m_prefetchedChunk != chunkId && chunkId != CHUNKID_MAX)
     {
         // Wait to make sure there is no outstanding prefetches.
         if (m_prefetch.valid())
@@ -360,7 +366,10 @@ void BlockRandomizer::Prefetch(ChunkIdType chunkId)
         }
 
         m_prefetchedChunk = chunkId;
-        m_prefetch = std::async(launch::async, [this, chunkId]() { return m_deserializer->GetChunk(chunkId); });
+        m_prefetch = std::async(m_launchType, [this, chunkId]() { return m_deserializer->GetChunk(chunkId); });
+
+        if (m_verbosity >= Debug)
+            fprintf(stderr, "BlockRandomizer::Prefetch: prefetching original chunk: %u\n", chunkId);
     }
 }
 

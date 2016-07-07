@@ -46,8 +46,9 @@ ImageReader::ImageReader(MemoryProviderPtr provider,
     const bool multithreadedGetNextSequences = true;
     if (configHelper.ShouldRandomize())
     {
-        // We do not use legacy randomization and io prefetching, because chunks are single images currently.
+        // We do not use legacy randomization.
         bool useLegacyRandomization = false;
+        // We do not do io prefetching, because chunks are single images currently.
         bool ioPrefetch = false;
         randomizer = std::make_shared<BlockRandomizer>(0, 1, deserializer, ioPrefetch, BlockRandomizer::DecimationMode::sequence, useLegacyRandomization, multithreadedGetNextSequences);
     }

@@ -63,6 +63,14 @@ public:
         return m_deserializer->GetStreamDescriptions();
     }
 
+    ~BlockRandomizer()
+    {
+        if(m_prefetch.valid())
+        {
+            m_prefetch.wait();
+        }
+    }
+
 private:
     // Retrieve data for chunks.
     void RetrieveDataChunks();
@@ -141,10 +149,10 @@ private:
 
     int m_verbosity;
 
-    // Flag that signifies whether to do chunk prefetching.
-    bool m_shouldPrefetch;
     // Prefetch future.
     std::future<ChunkPtr> m_prefetch;
+    // Whether to have async or deferred prefetch.
+    launch m_launchType;
     // Prefetched original chunk id.
     ChunkIdType m_prefetchedChunk;
 };
