@@ -568,7 +568,8 @@ public:
 						bool isempty = (hend <= hstart) || (wend <= wstart);
 
 						for (int c = 0; c < num_channels; c++) {
-							int output_idx = roi_idx*roi_output_size + c + (outh + outw*m_outH)*num_channels;
+							//int output_idx = roi_idx*roi_output_size + c + (outh + outw*m_outH)*num_channels;
+							int output_idx = roi_idx*roi_output_size + outw + outh*m_outW + c*m_outH*m_outW;
 							//fprintf(stderr, "going in output location %d\n", output_idx);
 							outputSlice(output_idx, img_idx) = -1;
 
@@ -577,7 +578,8 @@ public:
 
 							for (int h = hstart; h < hend; h++) {
 								for (int w = wstart; w < wend; w++) {
-									int data_idx = c + (h + w*input_h)*num_channels;
+									int data_idx = w + h*input_w + c*input_h*input_w;
+									//int data_idx = c + (h + w*input_h)*num_channels;
 									if (img(data_idx, 0) > outputSlice(output_idx, img_idx)) {
 										outputSlice(output_idx, img_idx) = img(data_idx, 0);
 									}
