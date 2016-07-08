@@ -20,6 +20,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         IDataDeserializerPtr deserializer,
         ChunkRandomizerPtr chunkRandomizer)
         : m_verbosity(verbosity),
+		m_saveFirst(true),
         m_randomizedChunks(chunkRandomizer->GetRandomizedChunks()),
         m_chunkWindowBegin(0),
         m_randomizedWindowEnd(0),
@@ -47,6 +48,8 @@ namespace Microsoft { namespace MSR { namespace CNTK {
     {
         srand((unsigned int)randSeed);
 
+		m_saveFirst = true;
+
         m_sequenceWindow.clear();
         m_chunkWindow.clear();
         m_randomizedChunkInfo.clear();
@@ -65,7 +68,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
     }
 
     // Gets next randomized sequence descriptions not exceeding the sample count.
-    std::vector<RandomizedSequenceDescription> SequenceRandomizer::GetNextSequenceDescriptions(size_t sampleCount)
+    std::vector<RandomizedSequenceDescription> SequenceRandomizer::GetNextSequenceDescriptions(size_t sampleCount, size_t theoryCount)
     {
         int samples = (int)sampleCount;
 
@@ -95,6 +98,49 @@ namespace Microsoft { namespace MSR { namespace CNTK {
             // Always decrease the available number of samples.
             samples -= (int)sequence->m_numberOfSamples;
         }
+
+		if (m_saveFirst) {
+			m_saveFirst = false;
+
+			m_firstWindow = std::deque<std::vector<RandomizedSequenceDescription>>(m_sequenceWindow.begin(), m_sequenceWindow.end());
+			m_firstRandomChunk = std::deque<RandomizedChunk>(m_chunkWindow.begin(), m_chunkWindow.end());
+			m_firstChunkInfo = std::deque<ChunkInfo>(m_randomizedChunkInfo.begin(), m_randomizedChunkInfo.end());
+		}
+
+		// Indeed, we do not have the multi-chunks problem, by default, we set them to 1
+		size_t needFillCount = theoryCount - sampleCount;
+		if (needFillCount) {
+			auto sequenceWindow = std::deque<std::vector<RandomizedSequenceDescription>>(m_sequenceWindow.begin(), m_sequenceWindow.end());
+			auto chunkWindow = std::deque<RandomizedChunk>(m_chunkWindow.begin(), m_chunkWindow.end());
+			auto randomizeChunkInfo = std::deque<ChunkInfo>(m_randomizedChunkInfo.begin(), m_randomizedChunkInfo.end());
+
+			Reset(m_seed);
+
+			for (size_t lackSample = 0; lackSample < needFillCount; lackSample++) {
+				RandomizedSequenceDescription* sequence = &m_sequenceWindow[lackSample][0];
+				result.push_back(*sequence);
+				MoveChunkCursor();
+			}
+
+			for (int i = 0; i < sampleCount; i++) {
+				m_sequenceWindow.push_front(sequenceWindow.back());
+				m_chunkWindow.push_front(chunkWindow.back());
+				m_randomizedChunkInfo.push_front(randomizeChunkInfo.back());
+
+				sequenceWindow.pop_back();
+				chunkWindow.pop_back();
+				randomizeChunkInfo.pop_back();
+			}
+
+			m_chunkWindowBegin = 0;
+			m_randomizedWindowEnd = (int)theoryCount;
+			m_randomizationCursor = (int)theoryCount;
+			m_chunkWindowEnd = (int)theoryCount;
+
+			m_currentChunkCursor = (int)theoryCount;
+			m_currentSequenceCursor = (int)theoryCount;
+			m_currentSampleCursor = (int)theoryCount;
+		}
 
         return result;
     }

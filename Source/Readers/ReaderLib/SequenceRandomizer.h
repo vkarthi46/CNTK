@@ -39,13 +39,20 @@ public:
     // Resets the current sweep according to the randomization seed provided.
     void Reset(size_t seed);
 
+	void SetSeed(size_t seed) { m_seed = seed; }
+
     // Sets the current cursor to the given sample offset.
     // If the offset is in the middle of a sequence, the next sequence is picked up.
     // If the offset points in the middle of last sequence, the end of the sweep is returned.
     size_t Seek(size_t sweepSampleOffset, size_t sweep);
 
     // Gets the next randomized sequence descriptions not exceeding the sample count.
-    std::vector<RandomizedSequenceDescription> GetNextSequenceDescriptions(size_t sampleCount);
+	std::vector<RandomizedSequenceDescription> GetNextSequenceDescriptions(size_t sampleCount) {
+		return GetNextSequenceDescriptions(sampleCount, sampleCount);
+	}
+
+
+	std::vector<RandomizedSequenceDescription> GetNextSequenceDescriptions(size_t sampleCount, size_t theoryCount);
 
     // Gets the current randomized chunk window.
     const std::deque<RandomizedChunk>& GetChunkWindow(size_t& randomizedIndex) const
@@ -134,6 +141,8 @@ private:
     // Contains randomized sequences from m_chunkWindow chunks.
     std::deque<std::vector<RandomizedSequenceDescription>> m_sequenceWindow;
 
+	size_t m_seed;
+
     struct ChunkInfo
     {
         size_t start;
@@ -143,6 +152,11 @@ private:
     // A rolling window of sample start positions and length for chunks that had their
     // sequenced randomized.
     std::deque<ChunkInfo> m_randomizedChunkInfo;
+
+	bool m_saveFirst;
+	std::deque<std::vector<RandomizedSequenceDescription>> m_firstWindow;
+	std::deque<RandomizedChunk> m_firstRandomChunk;
+	std::deque<ChunkInfo> m_firstChunkInfo;
 
     // TODO consider to change to ChunkIdType where appropriate
     // Index of the first chunk in the window (inclusive).
