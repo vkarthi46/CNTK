@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE(BlockRandomizerOneEpochLegacyRandomization)
     epochConfiguration.m_epochIndex = 0;
     randomizer->StartEpoch(epochConfiguration);
 
-    vector<float> expected { 7, 4, 1, 2, 0, 5, 3, 8, 9, 6 };
+    vector<float> expected { 5, 0, 3, 8, 2, 1, 9, 6, 7, 4 };
     BOOST_CHECK_EQUAL(data.size(), expected.size());
     vector<float> actual;
     for (int i = 0; i < data.size() + 1; i++)
