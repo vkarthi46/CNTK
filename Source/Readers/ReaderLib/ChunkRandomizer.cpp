@@ -55,7 +55,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 
         if (m_legacy)
         {
-            RandomShuffle(randomizedChunkIndices, seed + 1);
+            RandomShuffle(randomizedChunkIndices, seed);
         }
         else
         {

@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE(BlockRandomizerOneEpoch)
     epochConfiguration.m_epochIndex = 0;
     randomizer->StartEpoch(epochConfiguration);
 
-    vector<float> expected { 3, 4, 1, 8, 0, 5, 9, 6, 7, 2 };
+    vector<float> expected { 5, 0, 9, 6, 8, 1, 7, 2, 3, 4 };
     BOOST_CHECK_EQUAL(data.size(), expected.size());
     vector<float> actual;
     for (int i = 0; i < data.size() + 1; i++)
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(BlockRandomizerOneEpochWithChunks1)
     epochConfiguration.m_epochIndex = 0;
     randomizer->StartEpoch(epochConfiguration);
 
-    vector<float> expected{ 9, 8, 6, 7, 3, 2, 1, 0, 4, 5 };
+    vector<float> expected{ 7, 6, 2, 3, 5, 4, 9, 8, 0, 1 };
     BOOST_CHECK_EQUAL(data.size(), expected.size());
     vector<float> actual;
     for (int i = 0; i < data.size() + 1; i++)
@@ -252,8 +252,8 @@ BOOST_AUTO_TEST_CASE(BlockRandomizerOneEpochWithChunks2)
     randomizer->StartEpoch(epochConfiguration);
 
     vector<float> expected {
-        16, 14, 15, 8, 13, 6, 17, 4, 12, 9,
-        3, 18, 0, 5, 2, 11, 19, 7, 1, 10
+        10, 14, 15, 6, 5, 16, 11, 0, 4, 7,
+        13, 8, 18, 1, 12, 3, 9, 17, 19, 2
     };
     BOOST_CHECK_EQUAL(data.size(), expected.size());
     vector<float> actual;
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE(BlockRandomizerOneEpochLegacyRandomization)
     epochConfiguration.m_epochIndex = 0;
     randomizer->StartEpoch(epochConfiguration);
 
-    vector<float> expected { 9, 4, 1, 2, 0, 5, 3, 6, 7, 8 };
+    vector<float> expected { 7, 4, 1, 2, 0, 5, 3, 8, 9, 6 };
     BOOST_CHECK_EQUAL(data.size(), expected.size());
     vector<float> actual;
     for (int i = 0; i < data.size() + 1; i++)
