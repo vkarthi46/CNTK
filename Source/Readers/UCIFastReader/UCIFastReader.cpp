@@ -855,7 +855,7 @@ bool UCIFastReader<ElemType>::GetMinibatchImpl(StreamMinibatchInputs& matrices)
     // size_t samplesExtra = m_totalSamples % m_epochSize; // extra samples at the end of an epoch
     // size_t epochsDS = (m_totalSamples+m_epochSize-1)/m_epochSize; // how many epochs per dataset
     size_t randomizeSet = randomize ? RandomizeSweep(m_mbStartSample) : 0;
-    const auto& tmap = m_randomordering(randomizeSet);
+    const auto& tmap = m_randomordering(randomizeSet + 1);
     size_t epochEnd = m_epochSize;
     size_t recordStart = m_totalSamples ? m_mbStartSample % m_totalSamples : m_mbStartSample;
 

@@ -472,7 +472,7 @@ public:
 
         // get random sequence (each time index occurs exactly once)
         // If the sweep changes, this will re-cache the sequence. We optimize for rare, monotonous sweep changes.
-        const auto &tmap = m_randomOrdering(sweep);
+        const auto &tmap = m_randomOrdering(sweep + 1);
 
         // page in the needed range of frames
         const size_t extent = augmentationextent(frames.dim(), vdim);
@@ -815,7 +815,7 @@ public:
 
         // get random sequence (each time index occurs exactly once)
         // If the sweep changes, this will re-cache the sequence. We optimize for rare, monotonous sweep changes.
-        const auto &tmap = m_randomOrdering(sweep);
+        const auto &tmap = m_randomOrdering(sweep+1);
 
         feat.resize(pframes.size());
         uids.resize(classids.size());

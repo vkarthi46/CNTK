@@ -98,7 +98,7 @@ void BlockRandomizer::PrepareNewSweepIfNeeded(size_t samplePosition)
         m_sweepStartInSamples = sweep * m_sweepTotalNumberOfSamples;
 
         // Rerandomizing the chunks.
-        m_chunkRandomizer->Randomize((unsigned int)m_sweep);
+        m_chunkRandomizer->Randomize((unsigned int)m_sweep + 1);
 
         // Resetting sequence randomizer.
         m_sequenceRandomizer->Reset(m_sweep + 1);

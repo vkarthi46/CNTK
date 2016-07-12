@@ -20,6 +20,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
             RuntimeError("RandomShuffle: too large set: need to change to different random generator!");
         }
 
+        assert(randomSeed != 0);
         srand(static_cast<unsigned int>(randomSeed));
         foreach_index(currentLocation, v)
         {
@@ -54,7 +55,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 
         if (m_legacy)
         {
-            RandomShuffle(randomizedChunkIndices, seed);
+            RandomShuffle(randomizedChunkIndices, seed + 1);
         }
         else
         {

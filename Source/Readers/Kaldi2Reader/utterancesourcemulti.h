@@ -701,6 +701,7 @@ private:
     {
         if (v.size() > RAND_MAX * (size_t) RAND_MAX)
             throw std::runtime_error("randomshuffle: too large set: need to change to different random generator!");
+        assert(randomseed != 0);
         srand((unsigned int) randomseed);
         foreach_index (i, v)
         {
@@ -713,30 +714,7 @@ private:
             ::swap(v[i], v[irand]);
         }
     }
-#if 0
-    template<typename VECTOR> static void randomshuffle(std::vector<VECTOR &> v, size_t randomseed)
-    {
-        foreach_index(j, v)
-        {
-           if (v[j].size() > RAND_MAX * (size_t) RAND_MAX)
-            throw std::runtime_error ("randomshuffle: too large set: need to change to different random generator!");
-        }
-        srand ((unsigned int) randomseed);
 
-        foreach_index (i, v[0])
-        {
-           // pick a random location
-            const size_t irand = msra::dbn::rand (0, v[0].size());
-
-            foreach_index(j, v){
-            // swap element i with it
-                if (irand == (size_t) i)
-                    continue;
-                ::swap (v[j][i], v[j][irand]);
-            }
-        }
-    }
-#endif // 0
     static void checkoverflow(size_t fieldval, size_t targetval, const char *fieldname)
     {
         if (fieldval != targetval)
@@ -794,7 +772,7 @@ private:
             assert(randomizedchunkrefs[i].size() == allchunks[i].size());
 
             // note that sincew randomshuffle() uses sweep as seed, this will keep the randomization common across all feature streams
-            randomshuffle(randomizedchunkrefs[i], sweep); // bring into random order (with random seed depending on sweep)
+            randomshuffle(randomizedchunkrefs[i], sweep + 1); // bring into random order (with random seed depending on sweep)
         }
 
         // place them onto the global timeline -> randomizedchunks[]
